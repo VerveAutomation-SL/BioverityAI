@@ -39,7 +39,7 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-1">
             <a
               className="px-4 py-2 text-slate-700 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200 font-medium"
-              href="#"
+              href="#about"
             >
               About
             </a>
