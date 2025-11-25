@@ -99,7 +99,7 @@ export default function Navbar() {
 
                         <a
                             className="px-4 py-2 text-slate-700 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200 font-medium"
-                            href="#"
+                            href="#integrations"
                         >
                             Integration
                         </a>
@@ -136,7 +136,7 @@ export default function Navbar() {
                 <div className="lg:hidden bg-white border-t border-slate-200 shadow-lg">
                     <div className="px-4 py-6 space-y-3">
                         <a
-                            href="#"
+                            href="#about"
                             className="block px-4 py-3 text-slate-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors font-medium"
                         >
                             About
@@ -190,7 +190,7 @@ export default function Navbar() {
                         </div>
 
                         <a
-                            href="#"
+                            href="#integrations"
                             className="block px-4 py-3 text-slate-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors font-medium"
                         >
                             Integration
