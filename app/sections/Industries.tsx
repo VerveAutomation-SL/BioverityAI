@@ -4,7 +4,9 @@ import { Building2, Hospital, Utensils, Hotel, Factory, Banknote, Stethoscope, S
 
 export default function Industries() {
     return (
-        <section className="w-full py-10 bg-emerald-500">
+        <section 
+        id="industries"
+        className="w-full py-10 bg-emerald-500">
             <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-20">
 
                 {/* Header */}
