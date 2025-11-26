@@ -4,6 +4,8 @@ import About from "./sections/About";
 import Solutions from "./sections/Solutions";
 import Industries from "./sections/Industries";
 import Integrations from "./sections/Integrations";
+import WhyChooseUs from "./sections/WhyChooseUs";
+import Footer from "./sections/Footer";
 
 export default function Home() {
   return (
@@ -14,6 +16,8 @@ export default function Home() {
       <Solutions />
       <Industries />
       <Integrations />
+      <WhyChooseUs />
+      <Footer />
     </main>
   );
 }
