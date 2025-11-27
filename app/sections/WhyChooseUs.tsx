@@ -6,14 +6,14 @@ export default function WhyChooseUs() {
   const points = [
     { 
       icon: ShieldCheck, 
-      text: "99.8% biometric accuracy with AI-powered recognition",
+      text: "AI-powered recognition",
       color: "from-blue-500 to-indigo-600",
       shadowColor: "group-hover:shadow-blue-500/40",
       glowColor: "bg-blue-500/10",
     },
     { 
       icon: Zap, 
-      text: "Ultra-fast verification – typically under 0.3 seconds",
+      text: "Ultra-fast verification",
       color: "from-yellow-500 to-orange-600",
       shadowColor: "group-hover:shadow-yellow-500/40",
       glowColor: "bg-yellow-500/10",
@@ -32,19 +32,12 @@ export default function WhyChooseUs() {
       shadowColor: "group-hover:shadow-emerald-500/40",
       glowColor: "bg-emerald-500/10",
     },
-    { 
-      icon: CheckCircle2, 
-      text: "AES-256 encrypted data protection and secure access",
-      color: "from-rose-500 to-red-600",
-      shadowColor: "group-hover:shadow-rose-500/40",
-      glowColor: "bg-rose-500/10",
-    },
   ];
 
   return (
     <section className="relative w-full py-8 bg-gradient-to-br from-slate-50 via-white to-emerald-50 overflow-hidden">
 
-      {/* Background elements (compact) */}
+      {/* Background elements */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-6 left-14 w-48 h-48 bg-blue-400/20 rounded-full blur-2xl animate-pulse" />
         <div className="absolute bottom-6 right-14 w-40 h-40 bg-emerald-400/20 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1.5s' }} />
@@ -61,7 +54,7 @@ export default function WhyChooseUs() {
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/60 backdrop-blur-sm rounded-full border border-slate-200 shadow-sm">
             <Sparkles className="w-3 h-3 text-emerald-600" />
             <span className="text-[10px] font-semibold text-slate-700">
-              THE BIOVERITY ADVANTAGE
+              THE BIOVERITY AI ADVANTAGE
             </span>
           </div>
 

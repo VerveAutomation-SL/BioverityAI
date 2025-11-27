@@ -1,9 +1,45 @@
 'use client'
 
-import React from 'react';
-import { Fingerprint, Shield, Zap, ArrowRight, Check, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { Fingerprint, ScanFace, ArrowRight, Check, Sparkles, ScanLine, HandMetal } from 'lucide-react';
+
+type AuthType = 'fingerprint' | 'face' | 'palm' | 'finger';
 
 export default function Hero() {
+    const [activeAuth, setActiveAuth] = useState<AuthType>('fingerprint');
+
+    const authMethods: Record<AuthType, {
+        icon: React.ReactElement;
+        label: string;
+        color: string;
+        borderColor: string;
+    }> = {
+        fingerprint: {
+            icon: <Fingerprint className="w-60 h-60 text-blue-400" strokeWidth={1.5} />,
+            label: "Fingerprint",
+            color: "text-green-600",
+            borderColor: "border-green-400"
+        },
+        face: {
+            icon: <ScanFace className="w-60 h-60 text-blue-400" strokeWidth={1.5} />,
+            label: "Face ID",
+            color: "text-blue-600",
+            borderColor: "border-blue-400"
+        },
+        palm: {
+            icon: <HandMetal className="w-60 h-60 text-green-600" strokeWidth={1.5} />,
+            label: "Palm Vein",
+            color: "text-green-700",
+            borderColor: "border-green-400"
+        },
+        finger: {
+            icon: <ScanLine className="w-60 h-60 text-purple-400" strokeWidth={1.5} />,
+            label: "Finger Vein",
+            color: "text-purple-600",
+            borderColor: "border-purple-400"
+        }
+    };
+
     return (
         <section className="relative w-full pt-31 pb-4 overflow-hidden bg-white">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-green-100 via-transparent to-transparent opacity-50" />
@@ -79,8 +115,8 @@ export default function Hero() {
                                 <div className="text-[10px] text-slate-600 font-medium">Setup Time</div>
                             </div>
                             <div className="text-center border-x border-slate-200">
-                                <div className="text-xl font-black text-blue-600 leading-none">99.9%</div>
-                                <div className="text-[10px] text-slate-600 font-medium">Uptime</div>
+                                <div className="text-xl font-black text-blue-600 leading-none">1.0</div>
+                                <div className="text-[10px] text-slate-600 font-medium">Version</div>
                             </div>
                             <div className="text-center">
                                 <div className="text-xl font-black text-green-700 leading-none">24/7</div>
@@ -93,37 +129,40 @@ export default function Hero() {
                     {/* Right Column */}
                     <div className="relative">
 
-                        <div className="relative bg-gradient-to-br from-slate-50 to-green-50 rounded-xl p-2 border border-slate-200 shadow-md">
+                        <div className="relative bg-gradient-to-br from-slate-50 to-green-50 rounded-xl p-2 mt-10 border border-slate-200 shadow-md">
 
                             <div className="relative aspect-[4/3] bg-white rounded-lg mb-1 overflow-hidden border border-slate-200 flex items-center justify-center">
-                                <div className="relative">
-                                    <Fingerprint className="w-60 h-60 text-blue-400" />
+                                <div className="relative transition-all duration-500">
+                                    {authMethods[activeAuth].icon}
                                     <div className="absolute inset-0 overflow-hidden">
                                         <div className="absolute w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent animate-scan-line" />
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-1.5">
-                                <div className="bg-white rounded-md p-2 text-center border border-slate-200 hover:border-green-300 transition-all">
-                                    <Fingerprint className="w-5 h-5 text-green-600 mx-auto mb-0.5" />
-                                    <div className="text-[9px] font-bold text-slate-700">Fingerprint</div>
-                                </div>
-                                <div className="bg-white rounded-md p-2 text-center border border-slate-200 hover:border-blue-300 transition-all">
-                                    <Shield className="w-5 h-5 text-blue-600 mx-auto mb-0.5" />
-                                    <div className="text-[9px] font-bold text-slate-700">Face ID</div>
-                                </div>
-                                <div className="bg-white rounded-md p-2 text-center border border-slate-200 hover:border-green-300 transition-all">
-                                    <Zap className="w-5 h-5 text-green-700 mx-auto mb-0.5" />
-                                    <div className="text-[9px] font-bold text-slate-700">Palm Vein</div>
-                                </div>
+                            <div className="grid grid-cols-4 gap-1.5">
+                                {(Object.keys(authMethods) as AuthType[]).map((key) => {
+                                    const method = authMethods[key];
+                                    return (
+                                        <button
+                                            key={key}
+                                            onMouseEnter={() => setActiveAuth(key)}
+                                            className={`bg-white rounded-md p-2 text-center border transition-all ${
+                                                activeAuth === key 
+                                                    ? `${method.borderColor} shadow-md scale-105` 
+                                                    : 'border-slate-200 hover:border-slate-300'
+                                            }`}
+                                        >
+                                            {key === 'fingerprint' && <Fingerprint className={`w-5 h-5 ${method.color} mx-auto mb-0.5`} />}
+                                            {key === 'face' && <ScanFace className={`w-5 h-5 ${method.color} mx-auto mb-0.5`} />}
+                                            {key === 'palm' && <HandMetal className={`w-5 h-5 ${method.color} mx-auto mb-0.5`} />}
+                                            {key === 'finger' && <ScanLine className={`w-5 h-5 ${method.color} mx-auto mb-0.5`} />}
+                                            <div className="text-[9px] font-bold text-slate-700">{method.label}</div>
+                                        </button>
+                                    );
+                                })}
                             </div>
 
-                        </div>
-
-                        <div className="absolute -top-3 -right-3 bg-white rounded-lg px-3 py-1.5 shadow border border-green-200 z-10">
-                            <div className="text-lg font-black bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent leading-none">99.9%</div>
-                            <div className="text-[8px] font-bold text-slate-600 leading-none">Accuracy</div>
                         </div>
 
                     </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { Cloud, Server, Cpu, Plug, Code, Database, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Cloud, Server, Plug, Code, Database, Sparkles, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Integrations() {
     const items = [
@@ -10,13 +11,6 @@ export default function Integrations() {
             desc: "Simple API endpoints for authentication, logs, users, and devices.",
             color: "from-blue-500 to-indigo-600",
             shadowColor: "group-hover:shadow-blue-500/30",
-        },
-        {
-            icon: Cpu,
-            title: "SDK Support",
-            desc: "Windows, Linux, Android SDKs for direct device communication.",
-            color: "from-purple-500 to-pink-600",
-            shadowColor: "group-hover:shadow-purple-500/30",
         },
         {
             icon: Cloud,
@@ -46,6 +40,13 @@ export default function Integrations() {
             color: "from-rose-500 to-red-600",
             shadowColor: "group-hover:shadow-rose-500/30",
         },
+        {
+            icon: MessageCircle,
+            title: "After Sales Support",
+            desc: "24/7 dedicated support team for maintenance and troubleshooting.",
+            color: "from-purple-500 to-pink-600",
+            shadowColor: "group-hover:shadow-purple-500/30",
+        },
     ];
 
     return (
@@ -59,7 +60,7 @@ export default function Integrations() {
                 <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-purple-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
             </div>
 
-            <div className="relative max-w-7xl mx-auto px-6 sm:px-10 lg:px-20">
+            <div className="relative max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
 
                 {/* Header */}
                 <div className="text-center mb-10 space-y-2">
@@ -80,7 +81,7 @@ export default function Integrations() {
                 </div>
 
                 {/* Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 ml-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
                     {items.map((item, index) => (
                         <div key={index} className="group relative">
 
@@ -99,7 +100,7 @@ export default function Integrations() {
                                 </h3>
 
                                 {/* Description */}
-                                <p className="text-slate-600 text-sm leading-relaxed font-medium mr-20">
+                                <p className="text-slate-600 text-sm leading-relaxed font-medium">
                                     {item.desc}
                                 </p>
 
@@ -110,7 +111,228 @@ export default function Integrations() {
                     ))}
                 </div>
 
+                {/* Compatible Systems Subsection */}
+                <CompatibleSystemsCarousel />
+
             </div>
         </section>
+    );
+}
+
+function CompatibleSystemsCarousel() {
+    const [activeIndex, setActiveIndex] = useState(0);
+
+    const systems = [
+        {
+            emoji: "📋",
+            title: "Attendance Management",
+            desc: "Smart tracking and monitoring for organizations",
+            tags: ["Fingerprint Scanner", "Smart Gates"],
+            gradient: "from-emerald-500 to-teal-600",
+            shadow: "emerald"
+        },
+        {
+            emoji: "💪",
+            title: "Gym Management",
+            desc: "Membership management for fitness centers",
+            tags: ["Apps", "Smart Gates"],
+            gradient: "from-orange-500 to-amber-600",
+            shadow: "orange"
+        },
+        {
+            emoji: "🅿️",
+            title: "Parking System",
+            desc: "UHF RFID vehicle access control",
+            tags: ["RFID"],
+            gradient: "from-blue-500 to-cyan-600",
+            shadow: "blue"
+        },
+        {
+            emoji: "🏢",
+            title: "Elevator Control",
+            desc: "Floor access via biometrics",
+            tags: ["Face", "Card"],
+            gradient: "from-slate-700 to-slate-900",
+            shadow: "slate"
+        },
+        {
+            emoji: "🎓",
+            title: "School Systems",
+            desc: "Student tracking & parent apps",
+            tags: ["Attendance"],
+            gradient: "from-green-500 to-emerald-600",
+            shadow: "green"
+        },
+        {
+            emoji: "📊",
+            title: "ERP Planning",
+            desc: "Integrated company management",
+            tags: ["Cloud"],
+            gradient: "from-purple-500 to-violet-600",
+            shadow: "purple"
+        },
+        {
+            emoji: "🚪",
+            title: "Smart Gates",
+            desc: "Multi-biometric authentication",
+            tags: ["Fingerprint", "Face"],
+            gradient: "from-indigo-500 to-blue-600",
+            shadow: "indigo"
+        }
+    ];
+
+    const nextSlide = () => {
+        setActiveIndex((prev) => (prev + 1) % systems.length);
+    };
+
+    const prevSlide = () => {
+        setActiveIndex((prev) => (prev - 1 + systems.length) % systems.length);
+    };
+
+    const getCardStyle = (index: number) => {
+        const diff = (index - activeIndex + systems.length) % systems.length;
+
+        if (diff === 0) {
+            return {
+                transform: 'translateX(0) scale(1.05)',
+                opacity: 1,
+                zIndex: 30,
+                filter: 'blur(0px)'
+            };
+        } else if (diff === 1 || diff === systems.length - 1) {
+            const isNext = diff === 1;
+            return {
+                transform: `translateX(${isNext ? '55%' : '-55%'}) scale(0.70)`,
+                opacity: 0.35,
+                zIndex: 20,
+                filter: 'blur(2px)'
+            };
+        } else if (diff === 2 || diff === systems.length - 2) {
+            const isNext = diff === 2;
+            return {
+                transform: `translateX(${isNext ? '110%' : '-110%'}) scale(0.55)`,
+                opacity: 0.15,
+                zIndex: 10,
+                filter: 'blur(3px)'
+            };
+        } else {
+            return {
+                transform: 'scale(0.45)',
+                opacity: 0,
+                zIndex: 0,
+                filter: 'blur(3px)'
+            };
+        }
+    };
+
+    return (
+        <div className="mt-12">
+            <div className="text-center mb-8">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mb-2">
+                    Compatible Systems
+                </h3>
+                <p className="text-slate-600 text-xs max-w-xl mx-auto">
+                    Seamlessly integrate with various business management systems
+                </p>
+            </div>
+
+            {/* Carousel Container */}
+            <div className="relative h-[360px] flex items-center justify-center perspective-1000 overflow-hidden">
+
+                {/* Navigation Buttons */}
+                <button
+                    onClick={prevSlide}
+                    className="absolute left-2 z-40 w-10 h-10 rounded-full bg-white shadow-xl flex items-center justify-center hover:scale-110 transition-all duration-300 hover:bg-blue-500 group"
+                >
+                    <ChevronLeft className="w-5 h-5 text-slate-800 group-hover:text-white" strokeWidth={3} />
+                </button>
+
+                <button
+                    onClick={nextSlide}
+                    className="absolute right-2 z-40 w-10 h-10 rounded-full bg-white shadow-xl flex items-center justify-center hover:scale-110 transition-all duration-300 hover:bg-blue-500 group"
+                >
+                    <ChevronRight className="w-5 h-5 text-slate-800 group-hover:text-white" strokeWidth={3} />
+                </button>
+
+                {/* Cards */}
+                <div className="relative w-full max-w-xs h-full flex items-center justify-center">
+                    {systems.map((system, index) => {
+                        const style = getCardStyle(index);
+                        const isActive = index === activeIndex;
+
+                        return (
+                            <div
+                                key={index}
+                                className="absolute w-full transition-all duration-700 ease-out cursor-pointer"
+                                style={style}
+                                onClick={() => setActiveIndex(index)}
+                            >
+                                <div className={`relative bg-gradient-to-br ${system.gradient} rounded-2xl p-6 shadow-xl`}>
+                                    <div className={`absolute inset-0 bg-${system.shadow}-900/40 rounded-2xl translate-y-2 translate-x-2 -z-10 blur-md`} />
+                                    <div className={`absolute inset-0 bg-${system.shadow}-800/30 rounded-2xl translate-y-4 translate-x-4 -z-20 blur-xl`} />
+
+                                    {isActive && (
+                                        <div className="absolute inset-0 bg-white/10 rounded-2xl animate-pulse" />
+                                    )}
+
+                                    <div className="relative text-white text-center">
+                                        <div className="text-6xl mb-4 drop-shadow-xl">
+                                            {system.emoji}
+                                        </div>
+                                        <h4 className="text-2xl font-black mb-2 tracking-tight">{system.title}</h4>
+                                        <p className="text-white/95 text-sm leading-snug mb-4 font-medium">
+                                            {system.desc}
+                                        </p>
+                                        <div className="flex gap-2 justify-center flex-wrap">
+                                            {system.tags.map((tag, i) => (
+                                                <span
+                                                    key={i}
+                                                    className="px-3 py-1 bg-white/25 rounded-lg text-xs font-bold backdrop-blur-md border border-white/30 shadow"
+                                                >
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Dots Indicator */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-40">
+                    {systems.map((_, index) => (
+                        <button
+                            key={index}
+                            onClick={() => setActiveIndex(index)}
+                            className={`transition-all duration-300 rounded-full ${
+                                index === activeIndex
+                                    ? 'w-8 h-2 bg-gradient-to-r from-blue-500 to-cyan-500'
+                                    : 'w-2 h-2 bg-slate-400 hover:bg-slate-600'
+                            }`}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {/* API Integration Banner */}
+            <div className="mt-12 relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
+                <div className="relative bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-6 shadow-xl transform group-hover:scale-[1.02] transition-all duration-500">
+                    <div className="flex items-center justify-between text-white flex-wrap gap-4">
+                        <div>
+                            <h4 className="text-2xl sm:text-3xl font-black mb-1 tracking-tight">
+                                Fast API Integration ⚡
+                            </h4>
+                            <p className="text-white/95 text-sm sm:text-lg font-medium">
+                                Complete integration test in just <span className="font-black text-xl sm:text-2xl">10 minutes</span>
+                            </p>
+                        </div>
+                        <div className="text-6xl sm:text-7xl drop-shadow-2xl animate-pulse">⚡</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }

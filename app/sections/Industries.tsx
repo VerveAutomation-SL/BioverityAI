@@ -256,18 +256,18 @@ export default function Industries() {
 
                 </div>
 
-                {/* Bottom Text */}
+               {/* Bottom Text */}
                 <div className="mt-8 lg:-mt-5 text-center">
                     <div className="inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-4 px-6 py-4 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl hover:bg-white/15 transition-all duration-300 group">
                         <p className="text-emerald-50 text-sm sm:text-base font-medium">
                             Don't see your industry?
                         </p>
-                        <button className="flex items-center gap-2 px-5 py-2.5 bg-white text-emerald-700 rounded-xl font-bold text-sm sm:text-base hover:bg-emerald-50 hover:scale-105 hover:shadow-2xl transition-all duration-300 group-hover:translate-x-1">
-                            <span>Customize Your Solution</span>
+                        <a href="#contact" className="flex items-center gap-2 px-5 py-2.5 bg-white text-emerald-700 rounded-xl font-bold text-sm sm:text-base hover:bg-emerald-50 hover:scale-105 hover:shadow-2xl transition-all duration-300 group-hover:translate-x-1">
+                            <span>Contact Us</span>
                             <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>
-                        </button>
+                        </a>
                     </div>
                 </div>
 

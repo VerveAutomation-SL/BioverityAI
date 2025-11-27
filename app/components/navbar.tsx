@@ -110,12 +110,19 @@ export default function Navbar() {
                         >
                             Integration
                         </a>
+
+                        <a
+                            className="px-4 py-2 text-slate-700 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200 font-medium"
+                            href="#integrations"
+                        >
+                            Shop
+                        </a>
                     </div>
 
                     {/* CTA Button */}
                     <div className="hidden lg:flex items-center gap-3">
                         <button className="px-5 py-2.5 text-slate-700 hover:text-green-600 font-semibold transition-colors duration-200">
-                            Login
+                            Login  / Register
                         </button>
                         <a
                             className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all duration-300"
@@ -200,10 +207,17 @@ export default function Navbar() {
                             Integration
                         </a>
 
+                        <a
+                            href="#integrations"
+                            className="block px-4 py-3 text-slate-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors font-medium"
+                        >
+                            Shop
+                        </a>
+
 
                         <div className="flex gap-3 mt-4">
                             <button className="flex-1 px-6 py-3 text-slate-700 border-2 border-slate-300 rounded-lg font-semibold hover:bg-slate-50 transition-colors">
-                                Login
+                                Login / Register
                             </button>
                             <a 
                             className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-green-500/30"

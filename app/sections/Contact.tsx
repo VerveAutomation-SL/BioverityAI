@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, User, Building2, Send, MessageSquare, Clock, Sparkles } from "lucide-react";
+import { Mail, User, Building2, Send, MessageSquare, Clock, Sparkles, Phone } from "lucide-react";
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 
@@ -51,9 +51,9 @@ export default function Contact() {
   };
 
   return (
-    <section 
-    id="contact"
-    className="relative w-full py-14 bg-white">
+    <section
+      id="contact"
+      className="relative w-full py-14 bg-white">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-50/50 via-white to-green-50/30" />
       <div className="absolute inset-0 opacity-[0.03]" style={{
         backgroundImage: 'radial-gradient(circle, #10b981 1px, transparent 1px)',
@@ -91,31 +91,67 @@ export default function Contact() {
             {/* Contact Details */}
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 p-6 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-[1.02]">
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              <div className="absolute top-6 left-6 w-12 h-12">
+                <div className="absolute inset-0 rounded-full bg-white/30 animate-ping" />
+                <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse" />
+              </div>
+              
               <div className="relative z-10 space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-2">
+                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-2 relative">
                   <Mail className="w-6 h-6 text-white" />
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse" />
                 </div>
                 <h3 className="text-lg font-black text-white">Contact Us</h3>
-                <p className="text-blue-100 text-xs">+65 9716 0535</p>
-                <div className="pt-1">
-                  <h4 className="text-xs font-bold text-white">Email</h4>
-                  <p className="text-blue-100 text-xs">info@bioverityai.com</p>
+                <p className="text-blue-100 text-sm font-semibold mb-3">We're Just a Message Away</p>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-white/90">
+                    <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium">
+                      <Phone className="w-3.5 h-3.5" />
+                      +65 9716 0535
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-white/90">
+                    <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium">
+                      <Mail className="w-3.5 h-3.5" />
+                      info@bioverityai.com
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                    <span className="text-xs font-medium text-white/90">Active Response Team</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Business Hours */}
+            {/* 24/7 Support */}
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 p-6 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-[1.02]">
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+              <div className="absolute top-6 left-6 w-12 h-12">
+                <div className="absolute inset-0 rounded-full bg-white/30 animate-ping" />
+                <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse" />
+              </div>
+
               <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-2">
+                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-2 relative">
                   <Clock className="w-6 h-6 text-white" />
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse" />
                 </div>
-                <h3 className="text-lg font-black text-white mb-1">Business Hours</h3>
-                <div className="text-purple-100 text-xs space-y-0.5">
-                  <p>Mon - Fri: 9:00 AM - 6:00 PM</p>
-                  <p>Saturday: 10:00 AM - 4:00 PM</p>
-                  <p>Sunday: Closed</p>
+                <h3 className="text-lg font-black text-white mb-1">24/7 Support</h3>
+                <p className="text-purple-100 text-sm font-semibold mb-3">Always Here for You</p>
+                <div className="flex items-center gap-2 text-white/90">
+                  <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                    <span className="text-xs font-medium">Online Now</span>
+                  </div>
+                  <div className="text-xs font-medium bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                    365 Days
+                  </div>
                 </div>
               </div>
             </div>
@@ -151,9 +187,8 @@ export default function Contact() {
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Full Name <span className="text-red-500">*</span>
                     </label>
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border bg-slate-50 transition-all ${
-                      errors.name ? 'border-red-400 bg-red-50' : 'border-slate-200 hover:border-slate-300 focus-within:border-green-500 focus-within:bg-white'
-                    }`}>
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border bg-slate-50 transition-all ${errors.name ? 'border-red-400 bg-red-50' : 'border-slate-200 hover:border-slate-300 focus-within:border-green-500 focus-within:bg-white'
+                      }`}>
                       <User className={`w-4 h-4 ${errors.name ? 'text-red-500' : 'text-slate-400'}`} />
                       <input
                         type="text"
@@ -171,9 +206,8 @@ export default function Contact() {
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Email Address <span className="text-red-500">*</span>
                     </label>
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border bg-slate-50 transition-all ${
-                      errors.email ? 'border-red-400 bg-red-50' : 'border-slate-200 hover:border-slate-300 focus-within:border-green-500 focus-within:bg-white'
-                    }`}>
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border bg-slate-50 transition-all ${errors.email ? 'border-red-400 bg-red-50' : 'border-slate-200 hover:border-slate-300 focus-within:border-green-500 focus-within:bg-white'
+                      }`}>
                       <Mail className={`w-4 h-4 ${errors.email ? 'text-red-500' : 'text-slate-400'}`} />
                       <input
                         type="email"
@@ -198,7 +232,7 @@ export default function Contact() {
                     </label>
                     <div className={errors.phone ? 'phone-input-error' : ''}>
                       <PhoneInput
-                        country={'lk'}
+                        country={'us'}
                         value={form.phone}
                         onChange={(phone) => handleChange("phone", phone)}
                         inputStyle={{
@@ -255,9 +289,8 @@ export default function Contact() {
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Your Message <span className="text-red-500">*</span>
                   </label>
-                  <div className={`rounded-lg border bg-slate-50 transition-all ${
-                    errors.message ? 'border-red-400 bg-red-50' : 'border-slate-200 hover:border-slate-300 focus-within:border-green-500 focus-within:bg-white'
-                  }`}>
+                  <div className={`rounded-lg border bg-slate-50 transition-all ${errors.message ? 'border-red-400 bg-red-50' : 'border-slate-200 hover:border-slate-300 focus-within:border-green-500 focus-within:bg-white'
+                    }`}>
                     <div className="flex items-start gap-2 px-3 py-2">
                       <MessageSquare className={`w-4 h-4 mt-1 ${errors.message ? 'text-red-500' : 'text-slate-400'}`} />
                       <textarea

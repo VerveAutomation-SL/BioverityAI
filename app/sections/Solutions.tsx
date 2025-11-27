@@ -69,10 +69,12 @@ export default function Solutions() {
   useEffect(() => {
     if (activeCard && cardRefs.current[activeCard]) {
       activeCardRef.current = cardRefs.current[activeCard];
-      activeCardRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      setTimeout(() => {
+        activeCardRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      },);
     }
   }, [activeCard]);
 
