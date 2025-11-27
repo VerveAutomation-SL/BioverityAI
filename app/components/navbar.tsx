@@ -121,9 +121,13 @@ export default function Navbar() {
 
                     {/* CTA Button */}
                     <div className="hidden lg:flex items-center gap-3">
-                        <button className="px-5 py-2.5 text-slate-700 hover:text-green-600 font-semibold transition-colors duration-200">
-                            Login  / Register
-                        </button>
+                        <a
+                            href="/login"
+                            className="flex-1 px-6 py-3 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition-colors text-center"
+                        >
+                            Login / Register
+                        </a>
+
                         <a
                             className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all duration-300"
                             href="#contact"
@@ -216,12 +220,16 @@ export default function Navbar() {
 
 
                         <div className="flex gap-3 mt-4">
-                            <button className="flex-1 px-6 py-3 text-slate-700 border-2 border-slate-300 rounded-lg font-semibold hover:bg-slate-50 transition-colors">
+                            <a
+                                href="/login"
+                                className="flex-1 px-6 py-3 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition-colors text-center"
+                            >
                                 Login / Register
-                            </button>
-                            <a 
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-green-500/30"
-                            href="#contact"
+                            </a>
+
+                            <a
+                                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-green-500/30"
+                                href="#contact"
                             >
                                 Contact Us
                             </a>
