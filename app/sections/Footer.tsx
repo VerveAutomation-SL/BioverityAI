@@ -37,10 +37,6 @@ export default function Footer() {
             <h4 className="text-sm font-semibold text-white mb-3">Contact</h4>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-green-400" />
-                Negombo, Sri Lanka
-              </li>
-              <li className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-green-400" />
                 +65 9716 0535
               </li>

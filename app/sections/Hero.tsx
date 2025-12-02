@@ -110,14 +110,7 @@ export default function Hero() {
 
                         {/* Stats */}
                         <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-200">
-                            <div className="text-center">
-                                <div className="text-xl font-black text-green-600 leading-none">10 min</div>
-                                <div className="text-[10px] text-slate-600 font-medium">Setup Time</div>
-                            </div>
-                            <div className="text-center border-x border-slate-200">
-                                <div className="text-xl font-black text-blue-600 leading-none">1.0</div>
-                                <div className="text-[10px] text-slate-600 font-medium">Version</div>
-                            </div>
+                            
                             <div className="text-center">
                                 <div className="text-xl font-black text-green-700 leading-none">24/7</div>
                                 <div className="text-[10px] text-slate-600 font-medium">Support</div>
