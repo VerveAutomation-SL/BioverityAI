@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Menu, X, ChevronDown } from "lucide-react";
+import Image from "next/image";
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
@@ -27,10 +28,11 @@ export default function Navbar() {
 
                     {/* Logo */}
                     <a href="#" className="transition-transform hover:scale-105 duration-300">
-                        <img
+                        <Image
                             src="/assets/images/logo.png"
                             alt="BioVerity AI Logo"
-                            className="h-15 w-auto"
+                            width={60}   // adjust as needed
+                            height={60}   // adjust as needed
                         />
                     </a>
 
@@ -122,14 +124,14 @@ export default function Navbar() {
                     {/* CTA Button */}
                     <div className="hidden lg:flex items-center gap-3">
                         <a
-                            href="/login"
+                            href="#contact"
                             className="flex-1 px-6 py-3 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition-colors text-center"
                         >
                             Login / Register
                         </a>
 
                         <a
-                            className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all duration-300"
+                            className="px-6 py-2.5 bg-linear-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-105 transition-all duration-300"
                             href="#contact"
                         >
                             Contact Us
@@ -215,20 +217,20 @@ export default function Navbar() {
                             href="#integrations"
                             className="block px-4 py-3 text-slate-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors font-medium"
                         >
-                            Shop
+                            Shops
                         </a>
 
 
                         <div className="flex gap-3 mt-4">
                             <a
-                                href="/login"
+                                href="#contact"
                                 className="flex-1 px-6 py-3 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition-colors text-center"
                             >
                                 Login / Register
                             </a>
 
                             <a
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-green-500/30"
+                                className="flex-1 px-6 py-3 bg-linear-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold shadow-lg shadow-green-500/30"
                                 href="#contact"
                             >
                                 Contact Us
