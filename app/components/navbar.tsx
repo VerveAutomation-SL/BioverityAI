@@ -31,8 +31,8 @@ export default function Navbar() {
                         <Image
                             src="/assets/images/logo.png"
                             alt="BioVerity AI Logo"
-                            width={60}   // adjust as needed
-                            height={60}   // adjust as needed
+                            width={60}  
+                            height={60}   
                         />
                     </a>
 
@@ -124,7 +124,7 @@ export default function Navbar() {
                     {/* CTA Button */}
                     <div className="hidden lg:flex items-center gap-3">
                         <a
-                            href="#contact"
+                            href="/login"
                             className="flex-1 px-6 py-3 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition-colors text-center"
                         >
                             Login / Register
