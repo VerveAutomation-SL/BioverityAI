@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { apiFetch } from "@/lib/apiClient";
 
 export default function AddProductForm({ orgId }: { orgId: string }) {
   const [name, setName] = useState("");
@@ -19,11 +20,11 @@ export default function AddProductForm({ orgId }: { orgId: string }) {
 
     setLoading(true);
 
-    // 1) Upload Image to Supabase Storage
+    // 1) Upload Image
     const formData = new FormData();
     formData.append("file", imageFile);
 
-    const uploadRes = await fetch("/api/products/uploadImage", {
+    const uploadRes = await apiFetch("/api/products/uploadImage", {
       method: "POST",
       body: formData,
     });
@@ -38,8 +39,8 @@ export default function AddProductForm({ orgId }: { orgId: string }) {
 
     const imageUrl = uploadJson.url;
 
-    // 2) Create Product in Database 
-    const res = await fetch("/api/products/create", {
+    // 2) Create Product
+    const res = await apiFetch("/api/products/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -71,7 +72,6 @@ export default function AddProductForm({ orgId }: { orgId: string }) {
       <h2 className="text-xl font-semibold mb-4">Add New Product</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-
         <div>
           <label className="font-medium">Product Name</label>
           <input

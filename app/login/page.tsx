@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { apiFetch } from "@/lib/apiClient";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Eye, EyeOff, Building2, User, Lock, Loader2, AlertCircle } from "lucide-react";
@@ -44,10 +45,14 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await apiFetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orgId: orgId.trim(), username: username.trim(), password }),
+        body: JSON.stringify({
+          orgId: orgId.trim(),
+          username: username.trim(),
+          password
+        }),
       });
 
       const data = await res.json();
@@ -85,7 +90,7 @@ export default function LoginPage() {
 
           {/* Header */}
           <div className="flex flex-col items-center mb-5">
-            <img 
+            <img
               src="/assets/images/logo.png"
               alt="BioVerity AI"
               className="h-16 w-auto mb-2"
@@ -194,7 +199,7 @@ export default function LoginPage() {
 
             {/* Not Registered Section */}
             <p className="text-center text-xs text-gray-600 mt-2">
-              Not registered yet?  
+              Not registered yet?
               <a href="mailto:info@bioverityai.com" className="text-green-600 font-medium ml-1">
                 Contact us at info@bioverityai.com
               </a>
