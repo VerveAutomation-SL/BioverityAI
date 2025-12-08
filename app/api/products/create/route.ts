@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { withCors, corsOptions } from "@/lib/cors";
+
+// Handle OPTIONS (preflight)
+export function OPTIONS() {
+  return corsOptions();
+}
 
 export async function POST(req: Request) {
   try {
     const { name, description, imageUrl, orgId } = await req.json();
 
     if (!name || !description || !imageUrl || !orgId) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+      return withCors({ error: "Missing fields" }, 400);
     }
 
     const { error } = await supabaseAdmin.from("products").insert({
@@ -18,11 +24,11 @@ export async function POST(req: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return withCors({ error: error.message }, 500);
     }
 
-    return NextResponse.json({ success: true });
+    return withCors({ success: true });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return withCors({ error: err.message }, 500);
   }
 }
