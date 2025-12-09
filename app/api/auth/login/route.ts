@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { withCors, corsOptions } from "@/lib/cors";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Handle OPTIONS
 export function OPTIONS() {
@@ -12,22 +12,21 @@ export function OPTIONS() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-
     const { orgId, username, password, debug } = body;
 
-    // --------- DEBUG MODE (only triggers when debug = true) ---------
+    // -------- DEBUG OUTPUT --------
     if (debug === true) {
       return withCors({
         debug: true,
         received_orgId: orgId ?? null,
         received_username: username ?? null,
         env_supabase_url: SUPABASE_URL ?? "undefined",
-        env_service_key: SERVICE_KEY ? "loaded" : "missing",
+        env_anon_key: ANON_KEY ? "loaded" : "missing",
         profileUrl_example:
           `${SUPABASE_URL}/rest/v1/profiles?org_id=eq.${orgId}&username=eq.${username}&select=*`
       });
     }
-    // ----------------------------------------------------------------
+    // ------------------------------
 
     if (!orgId || !username || !password) {
       return withCors({ error: "Missing fields" }, 400);
@@ -36,14 +35,15 @@ export async function POST(req: Request) {
     const cleanOrgId = orgId.trim();
     const cleanUsername = username.trim();
 
+    // Build URL using anon key (RLS OFF → permitted)
     const profileUrl =
       `${SUPABASE_URL}/rest/v1/profiles?org_id=eq.${encodeURIComponent(cleanOrgId)}` +
       `&username=eq.${encodeURIComponent(cleanUsername)}&select=*`;
 
     const profileRes = await fetch(profileUrl, {
       headers: {
-        apikey: SERVICE_KEY,
-        Authorization: `Bearer ${SERVICE_KEY}`,
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${ANON_KEY}`,
       },
     });
 
@@ -54,13 +54,14 @@ export async function POST(req: Request) {
       return withCors({ error: "Invalid credentials" }, 401);
     }
 
+    // Login using email + password
     const tokenRes = await fetch(
       `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          apikey: SERVICE_KEY,
+          apikey: ANON_KEY,
         },
         body: JSON.stringify({
           email: profile.email,
@@ -85,6 +86,9 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    return withCors({ error: "Server error", detail: err.message }, 500);
+    return withCors({ 
+      error: "Server error", 
+      detail: err.message 
+    }, 500);
   }
 }
