@@ -69,7 +69,7 @@ export default function LoginPage() {
 
       toast.success("Login successful");
 
-      router.push(data.profile.role === "shop" ? "/panels/shop" : "/dashboard");
+      router.push(data.profile.role === "shop" ? "/panels/shop" : "/panels/dashboard");
 
     } catch {
       toast.error("An error occurred. Please try again.");

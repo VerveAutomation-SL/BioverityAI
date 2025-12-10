@@ -1,3 +1,3 @@
 export default function Dashboard() {
-  return <h1>Customer Dashboard Placeholder</h1>;
+  return <h1 className="mt-20">Customer Dashboard Placeholder</h1>;
 }
