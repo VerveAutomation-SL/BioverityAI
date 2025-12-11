@@ -1,10 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingBag, Package, Search } from "lucide-react";
+import { ShoppingBag, Package, Search, Eye } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  image_url: string;
+  org_id: string;
+  created_at?: string;
+}
 
 export default function ShopPage() {
-  const [products, setProducts] = useState<any[]>([]);
+  const router = useRouter();
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -25,32 +36,36 @@ export default function ShopPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-3 border-green-700 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-sm text-gray-600 font-medium">Loading products...</p>
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600 font-medium">Loading products...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen mt-20 bg-gray-50">
-      <div className="bg-white border-b border-gray-200">
+    <main className="min-h-screen mt-20 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-12">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-green-700 rounded-lg">
-              <ShoppingBag className="w-7 h-7 text-white" />
+            <div className="p-4 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg">
+              <ShoppingBag className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-1">Product Catalog</h1>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-1">
+                Product Catalog
+              </h1>
               <p className="text-gray-600">Browse verified products from our marketplace</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white border-b border-gray-200 sticky top-20 z-40">
+      {/* Search Bar */}
+      <div className="bg-white border-b border-gray-200 sticky top-20 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="relative flex-1 max-w-xl w-full">
@@ -60,10 +75,10 @@ export default function ShopPage() {
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:border-green-700 focus:ring-2 focus:ring-green-100 transition-all outline-none text-sm"
+                className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none text-sm"
               />
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-blue-100 to-purple-100 text-blue-800 rounded-xl text-sm font-semibold shadow-sm">
               <Package className="w-4 h-4" />
               <span>{filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products'}</span>
             </div>
@@ -71,33 +86,35 @@ export default function ShopPage() {
         </div>
       </div>
 
+      {/* Products Grid */}
       <div className="max-w-7xl mx-auto px-6 py-10">
         {filteredProducts.length === 0 ? (
           <div className="text-center py-24">
-            <div className="inline-block p-5 bg-white rounded-xl shadow-sm mb-4">
-              <Package className="w-12 h-12 text-gray-300" />
+            <div className="inline-block p-6 bg-white rounded-2xl shadow-lg mb-4">
+              <Package className="w-16 h-16 text-gray-300" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">
               {searchTerm ? "No products found" : "No products available"}
             </h3>
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-500">
               {searchTerm ? "Try a different search term" : "Products will appear here once added"}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((p) => (
               <div
                 key={p.id}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden border border-gray-200"
+                className="group bg-white rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-200 hover:border-blue-300 hover:-translate-y-1 flex flex-col h-full"
               >
-                <div className="relative overflow-hidden bg-gray-100 h-52">
+                {/* Image - Fixed Height */}
+                <div className="relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 h-56 flex-shrink-0">
                   <img
                     src={p.image_url}
                     alt={p.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                   />
-                  <div className="absolute top-2 right-2 bg-green-700 text-white px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                  <div className="absolute top-3 right-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
@@ -105,23 +122,35 @@ export default function ShopPage() {
                   </div>
                 </div>
 
-                <div className="p-4">
-                  <h2 className="text-base font-semibold text-gray-900 mb-1.5 line-clamp-1">
+                {/* Content - Flexible Height */}
+                <div className="p-5 flex flex-col flex-grow">
+                  <h2 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">
                     {p.name}
                   </h2>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2 leading-relaxed">
+                  <p className="text-sm text-gray-600 mb-4 line-clamp-2 leading-relaxed flex-grow">
                     {p.description}
                   </p>
-                  <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                    <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-semibold text-green-800">
+
+                  {/* Organization */}
+                  <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-bold text-blue-700">
                         {p.org_id?.substring(0, 2).toUpperCase()}
                       </span>
                     </div>
-                    <span className="text-xs text-gray-500">
-                      {p.org_id?.substring(0, 10)}...
+                    <span className="text-xs text-gray-500 font-medium truncate">
+                      {p.org_id?.substring(0, 12)}...
                     </span>
                   </div>
+
+                  {/* View Details Button */}
+                  <button
+                    onClick={() => router.push(`/Shop/${p.id}`)}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 group mt-auto"
+                  >
+                    <Eye className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    View Details
+                  </button>
                 </div>
               </div>
             ))}

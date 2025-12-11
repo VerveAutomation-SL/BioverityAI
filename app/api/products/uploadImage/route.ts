@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { supabase } from "@/lib/supabaseClient";
 import { randomUUID } from "crypto";
 import { withCors, corsOptions } from "@/lib/cors";
 
@@ -21,21 +21,22 @@ export async function POST(req: Request) {
     const fileName = `${randomUUID()}.${fileExt}`;
     const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-    const { error } = await supabaseAdmin.storage
+    // Upload to Supabase Storage using the normal client
+    const { error: uploadError } = await supabase.storage
       .from("products")
       .upload(fileName, fileBuffer, {
         contentType: file.type,
+        upsert: false,
       });
 
-    if (error) {
-      return withCors({ error: error.message }, 500);
+    if (uploadError) {
+      return withCors({ error: uploadError.message }, 500);
     }
 
-    const {
-      data: { publicUrl },
-    } = supabaseAdmin.storage.from("products").getPublicUrl(fileName);
+    // Get public URL
+    const { data } = supabase.storage.from("products").getPublicUrl(fileName);
 
-    return withCors({ url: publicUrl });
+    return withCors({ url: data.publicUrl }, 200);
   } catch (err: any) {
     return withCors({ error: err.message }, 500);
   }

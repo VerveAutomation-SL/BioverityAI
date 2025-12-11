@@ -7,9 +7,18 @@ import { apiFetch } from "@/lib/apiClient";
 
 interface AddProductFormProps {
   orgId: string;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+  initialProduct?: any;
 }
 
-export default function AddProductForm({ orgId }: AddProductFormProps) {
+export default function AddProductForm({
+  orgId,
+  onSuccess,
+  onCancel,
+  initialProduct,
+}: AddProductFormProps) {
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -42,7 +51,7 @@ export default function AddProductForm({ orgId }: AddProductFormProps) {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleImageChange(e.dataTransfer.files[0]);
     }
@@ -102,6 +111,7 @@ export default function AddProductForm({ orgId }: AddProductFormProps) {
       setDescription("");
       setImageFile(null);
       setImagePreview(null);
+      if (onSuccess) onSuccess();
       setLoading(false);
     } catch (error) {
       toast.error("An error occurred");
@@ -113,7 +123,7 @@ export default function AddProductForm({ orgId }: AddProductFormProps) {
     <div className="relative bg-gradient-to-br from-white to-green-50 rounded-2xl shadow-xl border border-green-100 overflow-hidden">
       <div className="absolute top-0 right-0 w-64 h-64 bg-green-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{ animationDelay: '1s' }}></div>
-      
+
       <div className="relative p-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -163,13 +173,12 @@ export default function AddProductForm({ orgId }: AddProductFormProps) {
               <ImageIcon className="w-4 h-4 text-green-600" />
               Product Image
             </label>
-            
+
             <div
-              className={`relative border-2 border-dashed rounded-xl p-6 transition-all ${
-                dragActive
+              className={`relative border-2 border-dashed rounded-xl p-6 transition-all ${dragActive
                   ? "border-green-600 bg-green-50"
                   : "border-gray-300 hover:border-green-500 bg-white"
-              }`}
+                }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
@@ -234,6 +243,16 @@ export default function AddProductForm({ orgId }: AddProductFormProps) {
               </>
             )}
           </button>
+
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="mt-4 w-full text-gray-600 hover:underline text-sm"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </div>
     </div>

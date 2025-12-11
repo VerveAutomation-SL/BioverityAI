@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { supabase } from "@/lib/supabaseClient";
 import { withCors, corsOptions } from "@/lib/cors";
 
-// Handle OPTIONS (preflight)
+// OPTIONS handler (required for CORS)
 export function OPTIONS() {
   return corsOptions();
 }
@@ -15,7 +15,8 @@ export async function POST(req: Request) {
       return withCors({ error: "Missing fields" }, 400);
     }
 
-    const { error } = await supabaseAdmin.from("products").insert({
+    // Insert product using normal client
+    const { error } = await supabase.from("products").insert({
       name,
       description,
       image_url: imageUrl,
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
       return withCors({ error: error.message }, 500);
     }
 
-    return withCors({ success: true });
+    return withCors({ success: true }, 200);
   } catch (err: any) {
     return withCors({ error: err.message }, 500);
   }

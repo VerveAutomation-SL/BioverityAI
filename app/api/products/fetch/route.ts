@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { supabase } from "@/lib/supabaseClient";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const orgId = searchParams.get("orgId");
 
-  let query = supabaseAdmin
+  let query = supabase
     .from("products")
     .select("*")
     .order("created_at", { ascending: false });
