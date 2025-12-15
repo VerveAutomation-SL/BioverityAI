@@ -3,15 +3,22 @@
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function ShopNavbar({ fullName }: { fullName: string }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   const initials = fullName
-    ? fullName.split(" ").map(n => n[0]).join("").toUpperCase()
+    ? fullName.split(" ").map((n) => n[0]).join("").toUpperCase()
     : "U";
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -19,20 +26,44 @@ export default function ShopNavbar({ fullName }: { fullName: string }) {
   };
 
   return (
-    <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md shadow-md z-50 border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        
-        {/* Logo */}
+    <nav
+      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-white/95 backdrop-blur-lg shadow-lg border-b border-slate-300"
+          : "bg-slate-100/95 backdrop-blur-md border-b border-slate-300"
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-10 sm:px-16 lg:px-32 h-20 flex items-center justify-between relative">
+
+        {/* LOGO */}
         <Image
           src="/assets/images/logo.png"
           alt="Logo"
           width={55}
           height={55}
           className="cursor-pointer"
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/panels/shop")}
         />
 
-        {/* Avatar */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-10">
+
+          <button
+            className="text-gray-700 hover:text-green-700 font-medium text-lg"
+            onClick={() => router.push("/panels/shop/user-registration")}
+          >
+            User Registration
+          </button>
+
+          <button
+            className="text-gray-700 hover:text-blue-700 font-medium text-lg"
+            onClick={() => router.push("/panels/shop/products")}
+          >
+            Products
+          </button>
+
+        </div>
+
+        {/* AVATAR */}
         <div className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
