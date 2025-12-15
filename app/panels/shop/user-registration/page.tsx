@@ -20,6 +20,7 @@ export default function UserRegistrationPage() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -66,11 +67,13 @@ export default function UserRegistrationPage() {
     });
 
     const data = await res.json();
+
     if (!res.ok) {
-      alert("Error: " + data.error);
+      setFormError(data.error || "Registration failed");
       return;
     }
 
+    setFormError("");
     alert("User created successfully!");
 
     // Reset form
@@ -236,6 +239,12 @@ export default function UserRegistrationPage() {
                 </div>
 
               </div>
+
+              {formError && (
+                <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700">
+                  {formError}
+                </div>
+              )}
 
               {/* Buttons */}
               <div className="flex gap-3 pt-2">

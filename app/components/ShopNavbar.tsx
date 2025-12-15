@@ -27,11 +27,10 @@ export default function ShopNavbar({ fullName }: { fullName: string }) {
 
   return (
     <nav
-      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-white/95 backdrop-blur-lg shadow-lg border-b border-slate-300"
-          : "bg-slate-100/95 backdrop-blur-md border-b border-slate-300"
-      }`}
+      className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled
+        ? "bg-white/95 backdrop-blur-lg shadow-lg border-b border-slate-300"
+        : "bg-slate-100/95 backdrop-blur-md border-b border-slate-300"
+        }`}
     >
       <div className="max-w-7xl mx-auto px-10 sm:px-16 lg:px-32 h-20 flex items-center justify-between relative">
 
@@ -73,9 +72,19 @@ export default function ShopNavbar({ fullName }: { fullName: string }) {
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 mt-3 bg-white shadow-lg rounded-lg border w-40 py-2 text-sm">
+            <div className="absolute right-0 mt-3 bg-white shadow-lg rounded-lg border w-48 py-2 text-sm">
               <button
                 className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                onClick={() => {
+                  setMenuOpen(false);
+                  router.push("/panels/shop/change-password");
+                }}
+              >
+                Change Password
+              </button>
+
+              <button
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
                 onClick={handleLogout}
               >
                 Logout

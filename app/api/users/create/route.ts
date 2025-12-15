@@ -35,7 +35,17 @@ export async function POST(req: Request) {
       .eq("id", userId);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      if (updateError.message.includes("unique_org_id_for_shop")) {
+        return NextResponse.json(
+          { error: "Organization ID already exists. Please choose a different one." },
+          { status: 409 }
+        );
+      }
+
+      return NextResponse.json(
+        { error: updateError.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true }, { status: 200 });
