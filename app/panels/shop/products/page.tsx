@@ -10,7 +10,7 @@ import { Package, Plus, Pencil, Trash2, Image as ImageIcon } from "lucide-react"
 import { apiFetch } from "@/lib/apiClient";
 
 interface Profile {
-  role: string;
+  role: "admin" | "shop";
   org_id: string;
   full_name: string;
   username: string;
@@ -49,7 +49,7 @@ export default function ProductsManagement() {
 
       if (error || !prof) return router.replace("/login");
 
-      if (prof.role !== "shop") return router.replace("/dashboard");
+      if (prof.role !== "shop") return router.replace("/admin");
 
       setProfile(prof);
       fetchProducts(prof.org_id);
@@ -96,7 +96,7 @@ export default function ProductsManagement() {
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
-      <ShopNavbar fullName={profile.full_name} />
+      <ShopNavbar fullName={profile.full_name} role={profile.role} />
 
       {/* Header */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">

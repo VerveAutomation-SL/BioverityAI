@@ -9,41 +9,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // 1. Create Auth User with anon key (allowed because email signup enabled)
-    const { data: authUser, error: signupError } =
+    const { data: authData, error: authError } =
       await supabase.auth.signUp({ email, password });
 
-    if (signupError) {
-      return NextResponse.json({ error: signupError.message }, { status: 400 });
+    if (authError || !authData.user) {
+      return NextResponse.json(
+        { error: authError?.message || "Auth creation failed" },
+        { status: 400 }
+      );
     }
 
-    const userId = authUser.user?.id;
+    const userId = authData.user.id;
 
-    if (!userId) {
-      return NextResponse.json({ error: "User ID missing" }, { status: 500 });
-    }
-
-    // 2. Update profile row created by trigger
-    const { error: updateError } = await supabase
+    const { error: profileError } = await supabase
       .from("profiles")
-      .update({
+      .insert({
+        id: userId,
+        email,
         full_name,
         username,
         org_id,
         role,
-      })
-      .eq("id", userId);
+      });
 
-    if (updateError) {
-      if (updateError.message.includes("unique_org_id_for_shop")) {
-        return NextResponse.json(
-          { error: "Organization ID already exists. Please choose a different one." },
-          { status: 409 }
-        );
-      }
-
+    if (profileError) {
       return NextResponse.json(
-        { error: updateError.message },
+        { error: profileError.message },
         { status: 500 }
       );
     }

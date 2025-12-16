@@ -35,7 +35,7 @@ export default function UserRegistrationPage() {
         .eq("id", user.id)
         .single();
 
-      if (!prof || prof.role !== "shop") return router.replace("/dashboard");
+      if (!prof || prof.role !== "admin") return router.replace("/login");
 
       setProfile(prof);
       setLoading(false);
@@ -107,7 +107,8 @@ export default function UserRegistrationPage() {
         ></div>
       </div>
 
-      <ShopNavbar fullName={profile.full_name} />
+      <ShopNavbar fullName={profile.full_name} role={profile.role} />
+
 
       <div className="flex items-center justify-center py-8 px-6 relative z-10">
         <div className="w-full max-w-2xl">

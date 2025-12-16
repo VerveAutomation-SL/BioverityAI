@@ -90,9 +90,9 @@ export default function LoginPage() {
       toast.success("Login successful");
 
       router.push(
-        data.profile.role === "shop"
-          ? "/panels/shop"
-          : "/panels/dashboard"
+        data.profile.role === "admin"
+          ? "/panels/admin"
+          : "/panels/shop"
       );
     } catch {
       toast.error("An error occurred. Please try again.");

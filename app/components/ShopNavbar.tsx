@@ -5,13 +5,24 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 
-export default function ShopNavbar({ fullName }: { fullName: string }) {
+interface ShopNavbarProps {
+  fullName: string;
+  role: "admin" | "shop";
+}
+
+export default function ShopNavbar({ fullName, role }: ShopNavbarProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+  const basePath = role === "admin" ? "/panels/admin" : "/panels/shop";
+
   const initials = fullName
-    ? fullName.split(" ").map((n) => n[0]).join("").toUpperCase()
+    ? fullName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
     : "U";
 
   useEffect(() => {
@@ -27,13 +38,13 @@ export default function ShopNavbar({ fullName }: { fullName: string }) {
 
   return (
     <nav
-      className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled
-        ? "bg-white/95 backdrop-blur-lg shadow-lg border-b border-slate-300"
-        : "bg-slate-100/95 backdrop-blur-md border-b border-slate-300"
-        }`}
+      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-white/95 backdrop-blur-lg shadow-lg border-b border-slate-300"
+          : "bg-slate-100/95 backdrop-blur-md border-b border-slate-300"
+      }`}
     >
       <div className="max-w-7xl mx-auto px-10 sm:px-16 lg:px-32 h-20 flex items-center justify-between relative">
-
         {/* LOGO */}
         <Image
           src="/assets/images/logo.png"
@@ -41,25 +52,26 @@ export default function ShopNavbar({ fullName }: { fullName: string }) {
           width={55}
           height={55}
           className="cursor-pointer"
-          onClick={() => router.push("/panels/shop")}
+          onClick={() => router.push(basePath)}
         />
 
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-10">
+          {role === "admin" && (
+            <button
+              className="text-gray-700 hover:text-green-700 font-medium text-lg"
+              onClick={() => router.push(`${basePath}/user-registration`)}
+            >
+              User Registration
+            </button>
+          )}
 
-          <button
-            className="text-gray-700 hover:text-green-700 font-medium text-lg"
-            onClick={() => router.push("/panels/shop/user-registration")}
-          >
-            User Registration
-          </button>
-
+          {/* BOTH ROLES */}
           <button
             className="text-gray-700 hover:text-blue-700 font-medium text-lg"
-            onClick={() => router.push("/panels/shop/products")}
+            onClick={() => router.push(`${basePath}/products`)}
           >
             Products
           </button>
-
         </div>
 
         {/* AVATAR */}
@@ -77,7 +89,7 @@ export default function ShopNavbar({ fullName }: { fullName: string }) {
                 className="w-full text-left px-4 py-2 hover:bg-gray-100"
                 onClick={() => {
                   setMenuOpen(false);
-                  router.push("/panels/shop/change-password");
+                  router.push(`${basePath}/change-password`);
                 }}
               >
                 Change Password
@@ -92,7 +104,6 @@ export default function ShopNavbar({ fullName }: { fullName: string }) {
             </div>
           )}
         </div>
-
       </div>
     </nav>
   );
