@@ -12,6 +12,7 @@ export default function UserRegistrationPage() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const [orgId, setOrgId] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
@@ -21,6 +22,16 @@ export default function UserRegistrationPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formError, setFormError] = useState("");
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [showServices, setShowServices] = useState(false);
+
+  function toggleService(service: string) {
+    setSelectedServices((prev) =>
+      prev.includes(service)
+        ? prev.filter((s) => s !== service)
+        : [...prev, service]
+    );
+  }
 
   useEffect(() => {
     (async () => {
@@ -38,6 +49,7 @@ export default function UserRegistrationPage() {
       if (!prof || prof.role !== "admin") return router.replace("/login");
 
       setProfile(prof);
+      setOrgId("");
       setLoading(false);
     })();
   }, []);
@@ -45,6 +57,11 @@ export default function UserRegistrationPage() {
   async function handleRegister() {
     if (!email || !username || !fullName || !password || !confirmPassword) {
       alert("Please fill all fields.");
+      return;
+    }
+
+    if (!orgId) {
+      alert("Organization ID is required.");
       return;
     }
 
@@ -61,8 +78,9 @@ export default function UserRegistrationPage() {
         password,
         full_name: fullName,
         username,
-        org_id: profile.org_id,
-        role: "customer",
+        org_id: orgId,
+        role: "shop",
+        services: selectedServices,
       }),
     });
 
@@ -77,11 +95,14 @@ export default function UserRegistrationPage() {
     alert("User created successfully!");
 
     // Reset form
+    setOrgId("");
     setEmail("");
     setUsername("");
     setFullName("");
     setPassword("");
     setConfirmPassword("");
+    setSelectedServices([]);
+    setShowServices(false);
   }
 
   if (loading || !profile) {
@@ -136,9 +157,10 @@ export default function UserRegistrationPage() {
                 </label>
                 <input
                   type="text"
-                  value={profile.org_id}
-                  readOnly
-                  className="w-full border-2 border-gray-200 rounded-xl p-3 bg-gray-50 text-gray-600 cursor-not-allowed font-mono text-sm"
+                  placeholder="Enter unique Organization ID"
+                  value={orgId}
+                  onChange={(e) => setOrgId(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-200 outline-none font-mono text-sm"
                 />
               </div>
 
@@ -187,7 +209,59 @@ export default function UserRegistrationPage() {
                     className="w-full border-2 border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-200 outline-none"
                   />
                 </div>
+              </div>
 
+              {/* SERVICES DROPDOWN */}
+              <div className="relative">
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-emerald-600" />
+                  Enabled Services
+                </label>
+
+                {/* Trigger */}
+                <button
+                  type="button"
+                  className="w-full border-2 border-gray-200 rounded-xl p-3 bg-gray-50 text-left flex justify-between items-center"
+                  onClick={() => setShowServices((v) => !v)}
+                >
+                  <span className="text-sm text-gray-700">
+                    {selectedServices.length > 0
+                      ? selectedServices.join(", ")
+                      : "Select services"}
+                  </span>
+                  <span className="text-gray-400">▾</span>
+                </button>
+
+                {/* Dropdown */}
+                {showServices && (
+                  <div className="absolute z-20 mt-2 w-full bg-white border-2 border-gray-200 rounded-xl shadow-lg p-3 space-y-2">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedServices.includes("authentication")}
+                        onChange={() => toggleService("authentication")}
+                        className="w-4 h-4 accent-emerald-600"
+                      />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          Attendance
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Access attendance dashboard
+                        </p>
+                      </div>
+                    </label>
+                    <div className="pt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowServices(false)}
+                        className="text-sm font-semibold text-emerald-600 hover:underline"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Passwords */}

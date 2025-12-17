@@ -3,12 +3,21 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { email, password, full_name, username, org_id, role } = await req.json();
+    const {
+      email,
+      password,
+      full_name,
+      username,
+      org_id,
+      role,
+      services, // NEW
+    } = await req.json();
 
     if (!email || !password || !full_name || !username || !org_id || !role) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
+    // 1️⃣ Create auth user
     const { data: authData, error: authError } =
       await supabase.auth.signUp({ email, password });
 
@@ -21,6 +30,7 @@ export async function POST(req: Request) {
 
     const userId = authData.user.id;
 
+    // 2️⃣ Insert profile
     const { error: profileError } = await supabase
       .from("profiles")
       .insert({
@@ -39,8 +49,29 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    // 3️⃣ Insert user services (AUTHENTICATION ONLY for now)
+    const selectedServices: string[] =
+      Array.isArray(services) && services.length > 0
+        ? services
+        : ["authentication"];
 
+    const { error: serviceError } = await supabase
+      .from("user_services")
+      .insert(
+        selectedServices.map((service) => ({
+          user_id: userId,
+          service_key: service,
+        }))
+      );
+
+    if (serviceError) {
+      return NextResponse.json(
+        { error: serviceError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

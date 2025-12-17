@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import ShopNavbar from "@/app/components/ShopNavbar";
-import { PackageSearch } from "lucide-react";
+import { PackageSearch, Layers } from "lucide-react";
 
 export default function ShopHome() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -28,6 +29,12 @@ export default function ShopHome() {
         return router.replace("/panels/admin");
       }
 
+      const { data: svc } = await supabase
+        .from("user_services")
+        .select("service_key")
+        .eq("user_id", user.id);
+
+      setServices(svc?.map((s) => s.service_key) || []);
       setProfile(prof);
       setLoading(false);
     })();
@@ -93,6 +100,35 @@ export default function ShopHome() {
             </div>
           </div>
 
+          {/* Services card */}
+          {services.length > 0 && (
+            <div
+              onClick={() => router.push("/panels/shop/services")}
+              className="cursor-pointer group relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500"></div>
+
+              <div className="relative bg-white border-2 border-emerald-100 rounded-2xl p-6 hover:border-emerald-300 transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1">
+                <div className="mb-4 relative">
+                  <div className="relative w-16 h-16 mx-auto bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl flex items-center justify-center border-2 border-emerald-200">
+                    <Layers className="w-8 h-8 text-emerald-600" />
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">
+                  Services
+                </h3>
+
+                <p className="text-gray-600 mb-3 leading-relaxed text-sm text-center">
+                  Access enabled services for your account
+                </p>
+
+                <div className="flex items-center justify-center text-emerald-600 font-semibold text-sm">
+                  <span>Open Services</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -104,7 +140,6 @@ export default function ShopHome() {
             </span>
           </div>
         </div>
-
       </div>
     </div>
   );
