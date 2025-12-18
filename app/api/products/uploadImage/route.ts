@@ -21,7 +21,6 @@ export async function POST(req: Request) {
     const fileName = `${randomUUID()}.${fileExt}`;
     const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-    // Upload to Supabase Storage using the normal client
     const { error: uploadError } = await supabase.storage
       .from("products")
       .upload(fileName, fileBuffer, {
