@@ -26,7 +26,7 @@ export default function ChangePasswordPage() {
 
       const { data: prof } = await supabase
         .from("profiles")
-        .select("role, full_name")
+        .select("role, org_id, full_name, organization_logo")
         .eq("id", data.user.id)
         .single();
 

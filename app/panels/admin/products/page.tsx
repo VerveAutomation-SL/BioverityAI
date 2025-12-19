@@ -5,12 +5,13 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import AddProductForm from "@/app/components/AddProductForm";
 import ShopNavbar from "@/app/components/ShopNavbar";
-import { Package, Plus, Trash2, Image as ImageIcon } from "lucide-react";
+import { Package, Plus, Trash2, Image as ImageIcon, ArrowLeft } from "lucide-react";
 import { apiFetch } from "@/lib/apiClient";
 
 interface Profile {
   role: "admin" | "shop";
   full_name: string;
+  organization_logo?: string | null;
 }
 
 interface Product {
@@ -39,7 +40,7 @@ export default function AdminProductsPage() {
 
       const { data: prof } = await supabase
         .from("profiles")
-        .select("role, full_name")
+        .select("role, org_id, full_name, organization_logo")
         .eq("id", user.id)
         .single();
 
@@ -84,7 +85,12 @@ export default function AdminProductsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50 mt-20 relative overflow-hidden">
-      <ShopNavbar fullName={profile.full_name} role={profile.role} />
+
+      <ShopNavbar
+        fullName={profile.full_name}
+        role={profile.role}
+        organizationLogo={profile.organization_logo}
+      />
 
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
@@ -175,13 +181,25 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      {/* BACK BUTTON */}
+      <button
+        onClick={() => router.back()}
+        className="fixed bottom-8 left-8 group z-40"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-green-600 blur-xl opacity-50 rounded-full group-hover:opacity-70 transition-opacity" />
+        <div className="relative bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-4 rounded-full shadow-2xl group-hover:shadow-3xl group-hover:scale-105 transition-all flex items-center gap-3">
+          <ArrowLeft className="w-6 h-6" />
+          <span className="font-semibold text-lg">Go Back</span>
+        </div>
+      </button>
+
       {/* ADD BUTTON */}
       <button
         onClick={() => setShowForm(true)}
         className="fixed bottom-8 right-8 group z-40"
       >
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-green-600 blur-xl opacity-50 rounded-full" />
-        <div className="relative bg-gradient-to-r from-emerald-600 to-green-600 text-white p-5 rounded-full shadow-2xl">
+        <div className="relative bg-gradient-to-r from-emerald-600 to-green-600 text-white p-5 rounded-full shadow-2xl hover:from-emerald-700 hover:to-green-700 transition-all">
           <Plus className="w-7 h-7" />
         </div>
       </button>

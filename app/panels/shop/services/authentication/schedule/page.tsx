@@ -3,7 +3,6 @@
 import { Clock, CheckCircle2, XCircle } from "lucide-react";
 
 export default function SchedulePage() {
-  // Dummy data for UI
   const schedules = [
     {
       id: "EMP-001",
@@ -18,7 +17,7 @@ export default function SchedulePage() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-20">
 
       {/* Page Header */}
       <div>

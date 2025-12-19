@@ -7,6 +7,7 @@ export async function POST(req: Request) {
       email,
       password,
       full_name,
+      logo_url,
       username,
       org_id,
       role,
@@ -17,7 +18,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // 1️⃣ Create auth user
     const { data: authData, error: authError } =
       await supabase.auth.signUp({ email, password });
 
@@ -30,7 +30,6 @@ export async function POST(req: Request) {
 
     const userId = authData.user.id;
 
-    // 2️⃣ Insert profile
     const { error: profileError } = await supabase
       .from("profiles")
       .insert({
@@ -40,6 +39,7 @@ export async function POST(req: Request) {
         username,
         org_id,
         role,
+        organization_logo: logo_url,
       });
 
     if (profileError) {
@@ -49,7 +49,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3️⃣ Insert user services (AUTHENTICATION ONLY for now)
     const selectedServices: string[] =
       Array.isArray(services) && services.length > 0
         ? services

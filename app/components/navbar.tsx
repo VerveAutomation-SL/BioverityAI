@@ -17,7 +17,7 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  if (pathname.startsWith("/panels/shop")) {
+  if (pathname.startsWith("/panels/shop") || pathname.startsWith("/panels/admin")) {
     return null;
   }
 
@@ -259,7 +259,6 @@ export default function Navbar() {
           </div>
         </div>
       )}
-
     </nav>
   );
 }

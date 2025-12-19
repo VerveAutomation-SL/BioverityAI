@@ -15,7 +15,9 @@ export default function UserRegistrationPage() {
   const [orgId, setOrgId] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [organizationName, setOrganizationName] = useState("");
+  const [organizationLogo, setOrganizationLogo] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -42,9 +44,10 @@ export default function UserRegistrationPage() {
 
       const { data: prof } = await supabase
         .from("profiles")
-        .select("role, org_id, full_name")
+        .select("role, org_id, full_name, organization_logo")
         .eq("id", user.id)
         .single();
+
 
       if (!prof || prof.role !== "admin") return router.replace("/login");
 
@@ -55,7 +58,7 @@ export default function UserRegistrationPage() {
   }, []);
 
   async function handleRegister() {
-    if (!email || !username || !fullName || !password || !confirmPassword) {
+    if (!email || !username || !organizationName || !password || !confirmPassword) {
       alert("Please fill all fields.");
       return;
     }
@@ -76,7 +79,8 @@ export default function UserRegistrationPage() {
       body: JSON.stringify({
         email,
         password,
-        full_name: fullName,
+        full_name: organizationName,
+        logo_url: organizationLogo,
         username,
         org_id: orgId,
         role: "shop",
@@ -98,7 +102,7 @@ export default function UserRegistrationPage() {
     setOrgId("");
     setEmail("");
     setUsername("");
-    setFullName("");
+    setOrganizationName("");
     setPassword("");
     setConfirmPassword("");
     setSelectedServices([]);
@@ -118,6 +122,33 @@ export default function UserRegistrationPage() {
     );
   }
 
+  async function handleLogoUpload(file: File) {
+    setUploadingLogo(true);
+
+    const ext = file.name.split(".").pop();
+    const fileName = `logos/${crypto.randomUUID()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("products")
+      .upload(fileName, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (error) {
+      alert(error.message);
+      setUploadingLogo(false);
+      return;
+    }
+
+    const { data } = supabase.storage
+      .from("products")
+      .getPublicUrl(fileName);
+
+    setOrganizationLogo(data.publicUrl);
+    setUploadingLogo(false);
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50 mt-20 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -128,8 +159,11 @@ export default function UserRegistrationPage() {
         ></div>
       </div>
 
-      <ShopNavbar fullName={profile.full_name} role={profile.role} />
-
+      <ShopNavbar
+        fullName={profile.full_name}
+        role={profile.role}
+        organizationLogo={profile.organization_logo}
+      />
 
       <div className="flex items-center justify-center py-8 px-6 relative z-10">
         <div className="w-full max-w-2xl">
@@ -148,8 +182,7 @@ export default function UserRegistrationPage() {
           {/* Form */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border-2 border-emerald-100 p-8">
             <form className="space-y-4">
-
-              {/* ORG ID */}
+              {/* Organization ID */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-emerald-600" />
@@ -157,11 +190,54 @@ export default function UserRegistrationPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Enter unique Organization ID"
                   value={orgId}
                   onChange={(e) => setOrgId(e.target.value)}
                   className="w-full border-2 border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-200 outline-none font-mono text-sm"
                 />
+              </div>
+
+              {/* Organization Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Organization Name
+                </label>
+                <input
+                  type="text"
+                  value={organizationName}
+                  onChange={(e) => setOrganizationName(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-200 outline-none"
+                />
+              </div>
+
+              {/* Organization Logo */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Organization Logo
+                </label>
+
+                <div className="flex items-center gap-4">
+                  {organizationLogo ? (
+                    <img
+                      src={organizationLogo}
+                      alt="Organization Logo"
+                      className="w-20 h-20 rounded-xl object-cover border"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-xl border border-dashed flex items-center justify-center text-gray-400 text-sm">
+                      No Logo
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        handleLogoUpload(e.target.files[0]);
+                      }
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Email */}
@@ -172,43 +248,23 @@ export default function UserRegistrationPage() {
                 </label>
                 <input
                   type="email"
-                  placeholder="Enter user email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full border-2 border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-200 outline-none"
                 />
               </div>
 
-              {/* Username + Full Name */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <User className="w-4 h-4 text-blue-600" />
-                    Username
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-200 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <User className="w-4 h-4 text-blue-600" />
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter full name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-200 outline-none"
-                  />
-                </div>
+              {/* Username */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-200 outline-none"
+                />
               </div>
 
               {/* SERVICES DROPDOWN */}
@@ -218,7 +274,6 @@ export default function UserRegistrationPage() {
                   Enabled Services
                 </label>
 
-                {/* Trigger */}
                 <button
                   type="button"
                   className="w-full border-2 border-gray-200 rounded-xl p-3 bg-gray-50 text-left flex justify-between items-center"
@@ -232,7 +287,6 @@ export default function UserRegistrationPage() {
                   <span className="text-gray-400">▾</span>
                 </button>
 
-                {/* Dropdown */}
                 {showServices && (
                   <div className="absolute z-20 mt-2 w-full bg-white border-2 border-gray-200 rounded-xl shadow-lg p-3 space-y-2">
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -244,13 +298,14 @@ export default function UserRegistrationPage() {
                       />
                       <div>
                         <p className="text-sm font-semibold text-gray-800">
-                          Attendance
+                          Authentication
                         </p>
                         <p className="text-xs text-gray-600">
-                          Access attendance dashboard
+                          Access authentication dashboard
                         </p>
                       </div>
                     </label>
+
                     <div className="pt-2 text-center">
                       <button
                         type="button"
@@ -266,55 +321,32 @@ export default function UserRegistrationPage() {
 
               {/* Passwords */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-emerald-600" />
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Password
                   </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full border-2 border-gray-200 rounded-xl p-3 pr-12 focus:ring-2 focus:ring-emerald-200 outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-200 outline-none"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-emerald-600" />
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Confirm Password
                   </label>
-                  <div className="relative">
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Confirm password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full border-2 border-gray-200 rounded-xl p-3 pr-12 focus:ring-2 focus:ring-emerald-200 outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-200 outline-none"
+                  />
                 </div>
-
               </div>
 
+              {/* Error */}
               {formError && (
                 <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700">
                   {formError}
@@ -334,7 +366,7 @@ export default function UserRegistrationPage() {
                 <button
                   type="button"
                   onClick={handleRegister}
-                  className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-green-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-green-700 shadow-lg hover:shadow-xl"
                 >
                   Register User
                 </button>

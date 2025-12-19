@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { Download, Calendar, BarChart3, FileText, TrendingUp, Users, Clock } from "lucide-react";
 
-type ReportType = "day" | "week" | "month";
+type ReportType = "day" | "week" | "month" | "year";
 
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>("day");
   const [selectedDate, setSelectedDate] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
 
   // Dummy stats data
   const stats = {
@@ -17,7 +20,7 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-20">
       {/* Hero Section */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-3">
@@ -91,29 +94,28 @@ export default function ReportsPage() {
               Report Period
             </label>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {["day", "week", "month"].map((type) => (
+            <div className="grid grid-cols-4 gap-4">
+              {["day", "week", "month", "year"].map((type) => (
                 <button
                   key={type}
                   onClick={() => setReportType(type as ReportType)}
                   className={`relative p-6 rounded-2xl border-2 font-semibold capitalize transition-all duration-300 transform hover:scale-105
-                    ${
-                      reportType === type
-                        ? "border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-lg scale-105"
-                        : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
+                    ${reportType === type
+                      ? "border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-lg scale-105"
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
                     }`}
                 >
                   <div className="flex flex-col items-center gap-3">
                     <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-all
-                      ${
-                        reportType === type
-                          ? "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg"
-                          : "bg-slate-100"
+                      ${reportType === type
+                        ? "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg"
+                        : "bg-slate-100"
                       }`}
                     >
                       {type === "day" && <Calendar className={`w-7 h-7 ${reportType === type ? "text-white" : "text-slate-600"}`} />}
                       {type === "week" && <Clock className={`w-7 h-7 ${reportType === type ? "text-white" : "text-slate-600"}`} />}
                       {type === "month" && <BarChart3 className={`w-7 h-7 ${reportType === type ? "text-white" : "text-slate-600"}`} />}
+                      {type === "year" && <TrendingUp className={`w-7 h-7 ${reportType === type ? "text-white" : "text-slate-600"}`} />}
                     </div>
                     <span className={`text-lg ${reportType === type ? "text-emerald-700" : "text-slate-700"}`}>
                       Per {type}
@@ -132,29 +134,68 @@ export default function ReportsPage() {
           </div>
 
           {/* Date Picker */}
-          <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-6 border border-slate-200">
-            <label className="block text-sm font-semibold text-slate-700 mb-4">
-              Select {reportType.charAt(0).toUpperCase() + reportType.slice(1)}
-            </label>
-
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Calendar className="w-6 h-6 text-white" />
+          {/* PER DAY */}
+          {reportType === "day" && (
+            <div className="flex gap-4 w-full">
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  From date
+                </label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
+                />
               </div>
-              <input
-                type={
-                  reportType === "day"
-                    ? "date"
-                    : reportType === "week"
-                    ? "week"
-                    : "month"
-                }
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="flex-1 border-2 border-slate-200 rounded-xl p-3 focus:border-emerald-500 focus:outline-none transition-colors text-slate-700 font-medium"
-              />
+
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  To date
+                </label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* PER WEEK */}
+          {reportType === "week" && (
+            <input
+              type="week"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="flex-1 border-2 border-slate-200 rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
+            />
+          )}
+
+          {/* PER MONTH */}
+          {reportType === "month" && (
+            <input
+              type="month"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="flex-1 border-2 border-slate-200 rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
+            />
+          )}
+
+          {/* PER YEAR */}
+          {reportType === "year" && (
+            <input
+              type="number"
+              min="2000"
+              max={new Date().getFullYear()}
+              placeholder="YYYY"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="flex-1 border-2 border-slate-200 rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
+            />
+          )}
+
 
           {/* Report Preview Info */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5">
@@ -176,12 +217,16 @@ export default function ReportsPage() {
             </div>
             <button
               type="button"
-              disabled={!selectedDate}
+              disabled={
+                (reportType === "day" && (!fromDate || !toDate)) ||
+                (reportType === "week" && !selectedDate) ||
+                (reportType === "month" && !selectedDate) ||
+                (reportType === "year" && !selectedYear)
+              }
               className={`px-8 py-4 rounded-2xl font-semibold flex items-center gap-3 transition-all duration-300 transform
-                ${
-                  selectedDate
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-lg hover:scale-105"
-                    : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                ${selectedDate
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-lg hover:scale-105"
+                  : "bg-slate-200 text-slate-400 cursor-not-allowed"
                 }`}
             >
               <Download className="w-5 h-5" />

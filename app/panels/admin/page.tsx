@@ -20,7 +20,7 @@ export default function AdminHome() {
 
       const { data: prof } = await supabase
         .from("profiles")
-        .select("role, org_id, full_name")
+        .select("role, org_id, full_name, organization_logo")
         .eq("id", user.id)
         .single();
 
@@ -52,10 +52,14 @@ export default function AdminHome() {
         <div className="absolute top-1/3 left-1/2 w-48 h-48 bg-green-200/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "2s" }}></div>
       </div>
 
-      <ShopNavbar fullName={profile.full_name} role={profile.role} />
+      <ShopNavbar
+        fullName={profile.full_name}
+        role={profile.role}
+        organizationLogo={profile.organization_logo}
+      />
 
       <div className="max-w-6xl mx-auto px-6 py-10 relative z-10">
-        
+
         {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-block mb-4">
@@ -161,7 +165,7 @@ export default function AdminHome() {
               </div>
             </div>
           </div>
-          
+
         </div>
 
         {/* Footer */}

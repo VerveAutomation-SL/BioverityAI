@@ -3,7 +3,7 @@ import { UserPlus, Users, CheckCircle2, Eye, Edit, Trash2 } from "lucide-react";
 
 export default function EmployeeRegistrationPage() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-20">
       {/* Hero Section */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-3">

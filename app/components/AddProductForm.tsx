@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, Upload, ImageIcon, Sparkles, Plus, Building2 } from "lucide-react";
+import { Package, Upload, ImageIcon, Sparkles, Plus, Building2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiFetch } from "@/lib/apiClient";
 import { supabase } from "@/lib/supabaseClient";
@@ -57,6 +57,11 @@ export default function AddProductForm({
     reader.readAsDataURL(file);
   };
 
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
   const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -81,19 +86,18 @@ export default function AddProductForm({
     setLoading(true);
 
     try {
-      // Upload image
       const formData = new FormData();
       formData.append("file", imageFile);
 
       const uploadRes = await apiFetch("/api/products/uploadImage", {
         method: "POST",
         body: formData,
+        credentials: "include",
       });
 
       const uploadJson = await uploadRes.json();
       if (!uploadRes.ok) throw new Error(uploadJson.error);
 
-      // Create product
       const res = await apiFetch("/api/products/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -117,8 +121,8 @@ export default function AddProductForm({
   };
 
   return (
-    <div className="relative bg-gradient-to-br from-white to-green-50 rounded-2xl shadow-xl border border-green-100 overflow-hidden">
-      <div className="relative p-8 space-y-6">
+    <div className="relative bg-gradient-to-br from-white to-green-50 rounded-2xl shadow-xl border border-green-100 overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="relative p-8 space-y-6 overflow-y-auto flex-1">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-gradient-to-br from-green-600 to-emerald-700 rounded-xl">
             <Plus className="w-6 h-6 text-white" />
@@ -135,7 +139,7 @@ export default function AddProductForm({
             <select
               value={selectedOrg}
               onChange={(e) => setSelectedOrg(e.target.value)}
-              className="w-full border-2 border-gray-200 p-3 rounded-xl"
+              className="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-green-500 focus:outline-none transition-colors"
             >
               <option value="">Select organization</option>
               {orgs.map((o) => (
@@ -148,55 +152,106 @@ export default function AddProductForm({
         )}
 
         {/* NAME */}
-        <input
-          className="w-full border-2 p-3 rounded-xl"
-          placeholder="Product name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+        <div>
+          <label className="block font-semibold text-gray-700 mb-2">Product Name</label>
+          <input
+            className="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-green-500 focus:outline-none transition-colors"
+            placeholder="Enter product name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
 
         {/* DESCRIPTION */}
-        <textarea
-          className="w-full border-2 p-3 rounded-xl"
-          rows={4}
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <div>
+          <label className="block font-semibold text-gray-700 mb-2">Description</label>
+          <textarea
+            className="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-green-500 focus:outline-none transition-colors resize-none"
+            rows={4}
+            placeholder="Enter product description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
 
         {/* IMAGE */}
-        <div
-          className={`border-2 border-dashed rounded-xl p-6 ${dragActive ? "border-green-600" : ""}`}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-        >
+        <div>
+          <label className="block font-semibold text-gray-700 mb-2">Product Image</label>
+          
           {imagePreview ? (
-            <img src={imagePreview} className="h-48 w-full object-cover rounded-lg" />
+            <div className="relative group">
+              <img 
+                src={imagePreview} 
+                className="w-full h-64 object-contain rounded-xl border-2 border-gray-200 bg-gray-50" 
+                alt="Product preview"
+              />
+              <button
+                onClick={handleRemoveImage}
+                type="button"
+                className="absolute top-2 right-2 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-all opacity-0 group-hover:opacity-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           ) : (
-            <label className="cursor-pointer flex flex-col items-center">
-              <Upload className="w-8 h-8 text-green-600 mb-2" />
-              <span>Upload image</span>
-              <input type="file" hidden onChange={(e) => handleImageChange(e.target.files?.[0])} />
-            </label>
+            <div
+              className={`border-2 border-dashed rounded-xl p-8 transition-all ${
+                dragActive 
+                  ? "border-green-600 bg-green-50" 
+                  : "border-gray-300 hover:border-green-400 hover:bg-gray-50"
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <label className="cursor-pointer flex flex-col items-center">
+                <Upload className="w-12 h-12 text-green-600 mb-3" />
+                <span className="text-base font-semibold text-gray-700 mb-1">
+                  Click to upload or drag and drop
+                </span>
+                <span className="text-sm text-gray-500">
+                  PNG, JPG, GIF up to 10MB
+                </span>
+                <input 
+                  type="file" 
+                  hidden 
+                  accept="image/*"
+                  onChange={(e) => handleImageChange(e.target.files?.[0])} 
+                />
+              </label>
+            </div>
           )}
         </div>
 
-        {/* SUBMIT */}
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold"
-        >
-          {loading ? "Saving..." : "Add Product"}
-        </button>
-
-        {onCancel && (
-          <button onClick={onCancel} className="text-sm text-gray-600 underline">
-            Cancel
+        {/* BUTTONS */}
+        <div className="flex gap-3 pt-4">
+          {onCancel && (
+            <button 
+              onClick={onCancel}
+              type="button"
+              className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+          )}
+          
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            type="button"
+            className="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 text-white py-3 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Adding...
+              </span>
+            ) : (
+              "Add Product"
+            )}
           </button>
-        )}
+        </div>
       </div>
     </div>
   );
