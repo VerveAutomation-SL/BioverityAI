@@ -50,9 +50,25 @@ export async function POST(req: Request) {
     }
 
     const selectedServices: string[] =
-      Array.isArray(services) && services.length > 0
-        ? services
-        : ["authentication"];
+      Array.isArray(services) ? services : [];
+
+    if (selectedServices.length > 0) {
+      const { error: serviceError } = await supabase
+        .from("user_services")
+        .insert(
+          selectedServices.map((service) => ({
+            user_id: userId,
+            service_key: service,
+          }))
+        );
+
+      if (serviceError) {
+        return NextResponse.json(
+          { error: serviceError.message },
+          { status: 500 }
+        );
+      }
+    }
 
     const { error: serviceError } = await supabase
       .from("user_services")

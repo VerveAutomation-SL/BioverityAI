@@ -190,7 +190,7 @@ export default function AlertsPage() {
       <div className="mt-12 max-w-3xl bg-slate-50 border border-slate-200 rounded-2xl p-6">
         <h3 className="font-semibold text-slate-800 mb-3">Need Help?</h3>
         <p className="text-sm text-slate-600 leading-relaxed">
-          Having trouble setting up alerts? Contact our support team or check the documentation for setup guides and troubleshooting tips.
+          Having trouble setting up alerts? Contact our support team.
         </p>
       </div>
     </div>

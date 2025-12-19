@@ -75,8 +75,11 @@ export default function ChangePasswordPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 mt-20">
-      <ShopNavbar fullName={profile.full_name} role={profile.role} />
-
+      <ShopNavbar
+        fullName={profile.full_name}
+        role={profile.role}
+        organizationLogo={profile.organization_logo}
+      />
 
       <div className="flex items-center justify-center py-12 px-6">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border p-6">

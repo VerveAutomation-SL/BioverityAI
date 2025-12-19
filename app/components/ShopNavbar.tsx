@@ -143,9 +143,6 @@ export default function ShopNavbar({
                       <p className="text-sm font-semibold text-gray-800 truncate">
                         {fullName}
                       </p>
-                      <p className="text-xs text-gray-500 capitalize">
-                        {role} Account
-                      </p>
                     </div>
                   </div>
                 </div>

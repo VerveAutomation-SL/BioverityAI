@@ -86,45 +86,39 @@ export default function AdminHome() {
         {/* GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-          {/* Registration card */}
-          <div
-            onClick={() => router.push("/panels/admin/user-registration")}
-            className="cursor-pointer group relative"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500"></div>
-
-            <div className="relative bg-white border-2 border-emerald-100 rounded-2xl p-6 hover:border-emerald-300 transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1">
-              <div className="mb-4 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-600 blur-lg opacity-30 rounded-full"></div>
-                <div className="relative w-16 h-16 mx-auto bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl flex items-center justify-center border-2 border-emerald-200 group-hover:scale-105 group-hover:rotate-3 transition-all duration-300">
-                  <Users className="w-8 h-8 text-emerald-600" />
-                </div>
-              </div>
-
-              <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-emerald-700 transition-colors">
-                User Registration
-              </h3>
-              <p className="text-gray-600 mb-3 leading-relaxed text-sm">
-                Register new users with biometric verification under your organization
-              </p>
-
-              <div className="flex flex-wrap gap-2 mb-3">
-                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-200">
-                  User Management
-                </span>
-                <span className="px-2.5 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-full border border-green-200">
-                  New User
-                </span>
-              </div>
-
-              <div className="flex items-center text-emerald-600 font-semibold group-hover:translate-x-1 transition-transform text-sm">
-                <span>Get Started</span>
-                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </div>
-            </div>
-          </div>
+{/* Registration card */}
+<div className="group relative">
+  <div className="relative bg-white border-2 border-emerald-100 rounded-2xl p-6 pb-10 transition-all duration-300 shadow-lg">
+    <div className="mb-4 relative">
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-600 blur-lg opacity-30 rounded-full"></div>
+      <div className="relative w-16 h-16 mx-auto bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl flex items-center justify-center border-2 border-emerald-200">
+        <Users className="w-8 h-8 text-emerald-600" />
+      </div>
+    </div>
+    <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">
+      Users
+    </h3>
+    <p className="text-gray-600 mb-3 leading-relaxed text-sm">
+      Register new users with verification under your organization
+    </p>
+    <div className="flex flex-wrap gap-2 mb-3">
+      {/* User Management */}
+      <button
+        onClick={() => router.push("/panels/admin/users")}
+        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-full border border-emerald-700 cursor-pointer transition-all hover:shadow-md"
+      >
+        User Management
+      </button>
+      {/* New User */}
+      <button
+        onClick={() => router.push("/panels/admin/user-registration")}
+        className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-full border border-green-700 cursor-pointer transition-all hover:shadow-md"
+      >
+        New User
+      </button>
+    </div>
+  </div>
+</div>
 
           {/* Product card */}
           <div
