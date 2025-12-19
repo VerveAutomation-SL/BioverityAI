@@ -78,7 +78,20 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || "Login failed");
+        const msg = data.error?.toLowerCase() || "";
+
+        if (
+          msg.includes("invalid") ||
+          msg.includes("password") ||
+          msg.includes("credentials")
+        ) {
+          toast.error("Incorrect password or username");
+        } else if (msg.includes("organization")) {
+          toast.error("Invalid organization ID");
+        } else {
+          toast.error(data.error || "Login failed");
+        }
+
         return;
       }
 
@@ -168,8 +181,8 @@ export default function LoginPage() {
                   }}
                   placeholder="Enter your organization ID"
                   className={`w-full pl-10 pr-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none ${errors.orgId
-                      ? "border-red-500"
-                      : "border-gray-300"
+                    ? "border-red-500"
+                    : "border-gray-300"
                     }`}
                 />
               </div>

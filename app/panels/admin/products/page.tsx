@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import AddProductForm from "@/app/components/AddProductForm";
+import UpdateProductForm from "@/app/components/UpdateProductForm";
 import ShopNavbar from "@/app/components/ShopNavbar";
 import { Package, Plus, Trash2, Image as ImageIcon, ArrowLeft } from "lucide-react";
 import { apiFetch } from "@/lib/apiClient";
@@ -30,6 +31,7 @@ export default function AdminProductsPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -164,7 +166,16 @@ export default function AdminProductsPage() {
                       <td className="p-4 font-mono text-sm text-blue-700">
                         {p.org_id}
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-4 text-center flex justify-center gap-2">
+                        {/* EDIT */}
+                        <button
+                          onClick={() => setEditingProduct(p)}
+                          className="p-2 rounded-xl bg-blue-100 hover:bg-blue-200 border-2 border-blue-200"
+                        >
+                          ✏️
+                        </button>
+
+                        {/* DELETE */}
                         <button
                           onClick={() => deleteProduct(p.id)}
                           className="p-2 rounded-xl bg-red-100 hover:bg-red-200 border-2 border-red-200"
@@ -214,6 +225,21 @@ export default function AdminProductsPage() {
                 setShowForm(false);
               }}
               onCancel={() => setShowForm(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {editingProduct && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg border-2 border-blue-100">
+            <UpdateProductForm
+              product={editingProduct}
+              onSuccess={() => {
+                fetchProducts();
+                setEditingProduct(null);
+              }}
+              onCancel={() => setEditingProduct(null)}
             />
           </div>
         </div>

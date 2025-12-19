@@ -49,6 +49,28 @@ export default function AddProductForm({
     })();
   }, [isAdminMode]);
 
+  async function uploadProductImage(file: File) {
+    const ext = file.name.split(".").pop();
+    const fileName = `products/${crypto.randomUUID()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("products")
+      .upload(fileName, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const { data } = supabase.storage
+      .from("products")
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  }
+
   const handleImageChange = (file?: File | null) => {
     if (!file) return;
     setImageFile(file);
@@ -89,14 +111,8 @@ export default function AddProductForm({
       const formData = new FormData();
       formData.append("file", imageFile);
 
-      const uploadRes = await apiFetch("/api/products/uploadImage", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
+      const imageUrl = await uploadProductImage(imageFile);
 
-      const uploadJson = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(uploadJson.error);
 
       const res = await apiFetch("/api/products/create", {
         method: "POST",
@@ -104,7 +120,7 @@ export default function AddProductForm({
         body: JSON.stringify({
           name,
           description,
-          imageUrl: uploadJson.url,
+          imageUrl,
           orgId: finalOrgId,
         }),
       });
@@ -177,12 +193,12 @@ export default function AddProductForm({
         {/* IMAGE */}
         <div>
           <label className="block font-semibold text-gray-700 mb-2">Product Image</label>
-          
+
           {imagePreview ? (
             <div className="relative group">
-              <img 
-                src={imagePreview} 
-                className="w-full h-64 object-contain rounded-xl border-2 border-gray-200 bg-gray-50" 
+              <img
+                src={imagePreview}
+                className="w-full h-64 object-contain rounded-xl border-2 border-gray-200 bg-gray-50"
                 alt="Product preview"
               />
               <button
@@ -195,11 +211,10 @@ export default function AddProductForm({
             </div>
           ) : (
             <div
-              className={`border-2 border-dashed rounded-xl p-8 transition-all ${
-                dragActive 
-                  ? "border-green-600 bg-green-50" 
-                  : "border-gray-300 hover:border-green-400 hover:bg-gray-50"
-              }`}
+              className={`border-2 border-dashed rounded-xl p-8 transition-all ${dragActive
+                ? "border-green-600 bg-green-50"
+                : "border-gray-300 hover:border-green-400 hover:bg-gray-50"
+                }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
@@ -213,11 +228,11 @@ export default function AddProductForm({
                 <span className="text-sm text-gray-500">
                   PNG, JPG, GIF up to 10MB
                 </span>
-                <input 
-                  type="file" 
-                  hidden 
+                <input
+                  type="file"
+                  hidden
                   accept="image/*"
-                  onChange={(e) => handleImageChange(e.target.files?.[0])} 
+                  onChange={(e) => handleImageChange(e.target.files?.[0])}
                 />
               </label>
             </div>
@@ -227,7 +242,7 @@ export default function AddProductForm({
         {/* BUTTONS */}
         <div className="flex gap-3 pt-4">
           {onCancel && (
-            <button 
+            <button
               onClick={onCancel}
               type="button"
               className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
@@ -235,7 +250,7 @@ export default function AddProductForm({
               Cancel
             </button>
           )}
-          
+
           <button
             onClick={handleSubmit}
             disabled={loading}
