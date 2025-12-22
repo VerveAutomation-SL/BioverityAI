@@ -17,7 +17,7 @@ export default function SchedulePage() {
   ];
 
   return (
-    <div className="space-y-8 pt-20">
+    <div className="space-y-8">
 
       {/* Page Header */}
       <div>

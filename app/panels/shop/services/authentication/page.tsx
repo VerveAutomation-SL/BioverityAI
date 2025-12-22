@@ -54,7 +54,7 @@ export default function AuthenticationDashboard() {
   ];
 
   return (
-    <div className="pt-20 min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto space-y-8">
 
         {/* Page Header */}

@@ -29,7 +29,7 @@ export default function AttendancePage() {
   });
 
   return (
-    <div className="space-y-8 pt-20">
+    <div className="space-y-8">
       {/* Hero Section */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-3">

@@ -2,10 +2,18 @@
 
 import { useState } from "react";
 import { UserPlus, Upload, Fingerprint } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
-export default function EmployeeRegistrationForm() {
+export default function EmployeeRegistrationForm({
+  orgId,
+}: {
+  orgId: string;
+}) {
+
   const [fullName, setFullName] = useState("");
   const [employeeId, setEmployeeId] = useState("");
+  const [employeeUUID, setEmployeeUUID] = useState<string | null>(null);
+  const [enrolled, setEnrolled] = useState(false);
   const [department, setDepartment] = useState("");
   const [role, setRole] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -24,6 +32,93 @@ export default function EmployeeRegistrationForm() {
       setPhotoPreview(null);
     }
   };
+
+  async function uploadEmployeePhoto(file: File) {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `employee-${Date.now()}.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from("products")
+      .upload(fileName, file);
+
+    if (error) throw error;
+
+    const { data } = supabase.storage
+      .from("products")
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  }
+
+  async function handleRegisterEmployee() {
+    if (!employeeId || !fullName || !department || !role) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    if (!photo) {
+      alert("Employee photo is required");
+      return;
+    }
+
+    const photoUrl = await uploadEmployeePhoto(photo);
+
+    const res = await fetch("/api/employees/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        org_id: orgId,
+        employee_id: employeeId,
+        full_name: fullName,
+        department,
+        role,
+        photo_url: photoUrl,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Failed to register employee");
+      return;
+    }
+
+    setEmployeeUUID(data.employee.id);
+
+    alert("Employee registered successfully! Now proceed with biometric enrollment.");
+  }
+
+  async function handleEnroll(employeeUUID: string) {
+    const res = await fetch("/api/biometric/enroll", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employee_id: employeeUUID }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Enrollment failed");
+      return;
+    }
+
+    alert("Finger vein enrolled successfully!");
+    setEnrolled(true);
+    
+    // Reset form after successful enrollment
+    resetForm();
+  }
+
+  function resetForm() {
+    setFullName("");
+    setEmployeeId("");
+    setEmployeeUUID(null);
+    setEnrolled(false);
+    setDepartment("");
+    setRole("");
+    setPhoto(null);
+    setPhotoPreview(null);
+  }
 
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-xl">
@@ -144,50 +239,65 @@ export default function EmployeeRegistrationForm() {
               />
             </div>
           </div>
-
-          {/* Finger Vein Enrollment */}
-          <div className="mt-8 p-6 border-2 border-dashed border-emerald-300 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-                <Fingerprint className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-slate-800 mb-2">
-                  Biometric Enrollment
-                </h3>
-                <p className="text-sm text-slate-600 mb-4">
-                  Capture the employee's finger vein data using the connected biometric device for secure authentication.
-                </p>
-
-                <button
-                  type="button"
-                  className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-semibold flex items-center gap-2 hover:shadow-lg transition-all duration-300 transform hover:scale-105"
-                >
-                  <Fingerprint className="w-5 h-5" />
-                  Start Enrollment
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Submit Button */}
+      {/* Register Button - Show first */}
       <div className="mt-8 flex justify-end gap-4">
         <button
           type="button"
+          onClick={resetForm}
           className="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-colors"
         >
           Cancel
         </button>
         <button
           type="button"
-          className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-semibold flex items-center gap-2 hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+          onClick={handleRegisterEmployee}
+          disabled={!!employeeUUID}
+          className={`px-8 py-3 rounded-xl font-semibold flex items-center gap-2 ${
+            employeeUUID
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700"
+          }`}
         >
           <UserPlus className="w-5 h-5" />
           Register Employee
         </button>
       </div>
+
+      {/* Finger Vein Enrollment - Show after registration */}
+      {employeeUUID && (
+        <div className="mt-8 p-6 border-2 border-dashed border-emerald-300 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+              <Fingerprint className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-slate-800 mb-2">
+                Biometric Enrollment
+              </h3>
+              <p className="text-sm text-slate-600 mb-4">
+                Employee registered successfully! Now capture the employee's finger vein data using the connected biometric device for secure authentication.
+              </p>
+
+              <button
+                type="button"
+                disabled={enrolled}
+                onClick={() => handleEnroll(employeeUUID)}
+                className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 ${
+                  enrolled
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700"
+                }`}
+              >
+                <Fingerprint className="w-5 h-5" />
+                {enrolled ? "Enrolled Successfully" : "Start Enrollment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

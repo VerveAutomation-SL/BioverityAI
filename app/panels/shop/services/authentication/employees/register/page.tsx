@@ -1,9 +1,48 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
 import EmployeeRegistrationForm from "@/app/components/EmployeeRegistrationForm";
 import { UserPlus, Users, CheckCircle2, Eye, Edit, Trash2 } from "lucide-react";
 
 export default function EmployeeRegistrationPage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+
+      if (!user) return router.replace("/login");
+
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("org_id, role, full_name")
+        .eq("id", user.id)
+        .single();
+
+      if (!prof || prof.role !== "shop") {
+        return router.replace("/login");
+      }
+
+      setProfile(prof);
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading || !profile) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8 pt-20">
+    <div className="space-y-8">
       {/* Hero Section */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-3">
@@ -22,7 +61,7 @@ export default function EmployeeRegistrationPage() {
       </div>
 
       {/* Registration Form */}
-      <EmployeeRegistrationForm />
+      <EmployeeRegistrationForm orgId={profile.org_id} />
 
       {/* Registered Employees Table */}
       <div className="bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
