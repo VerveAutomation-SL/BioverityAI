@@ -14,7 +14,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { orgId, username, password, debug } = body;
 
-    // -------- DEBUG OUTPUT --------
     if (debug === true) {
       return withCors({
         debug: true,
@@ -22,23 +21,48 @@ export async function POST(req: Request) {
         received_username: username ?? null,
         env_supabase_url: SUPABASE_URL ?? "undefined",
         env_anon_key: ANON_KEY ? "loaded" : "missing",
-        profileUrl_example:
-          `${SUPABASE_URL}/rest/v1/profiles?org_id=eq.${orgId}&username=eq.${username}&select=*`
       });
     }
-    // ------------------------------
 
     if (!orgId || !username || !password) {
-      return withCors({ error: "Missing fields" }, 400);
+      return withCors(
+        { errorCode: "MISSING_FIELDS", error: "Missing fields" },
+        400
+      );
     }
 
     const cleanOrgId = orgId.trim();
     const cleanUsername = username.trim();
 
-    // Build URL using anon key (RLS OFF → permitted)
+    const orgCheckUrl =
+      `${SUPABASE_URL}/rest/v1/profiles` +
+      `?org_id=eq.${encodeURIComponent(cleanOrgId)}` +
+      `&select=id&limit=1`;
+
+    const orgCheckRes = await fetch(orgCheckUrl, {
+      headers: {
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${ANON_KEY}`,
+      },
+    });
+
+    const orgCheck = await orgCheckRes.json();
+
+    if (!Array.isArray(orgCheck) || orgCheck.length === 0) {
+      return withCors(
+        {
+          errorCode: "ORG_NOT_FOUND",
+          error: "Organization not found",
+        },
+        401
+      );
+    }
+
     const profileUrl =
-      `${SUPABASE_URL}/rest/v1/profiles?org_id=eq.${encodeURIComponent(cleanOrgId)}` +
-      `&username=eq.${encodeURIComponent(cleanUsername)}&select=*`;
+      `${SUPABASE_URL}/rest/v1/profiles` +
+      `?org_id=eq.${encodeURIComponent(cleanOrgId)}` +
+      `&username=eq.${encodeURIComponent(cleanUsername)}` +
+      `&select=*`;
 
     const profileRes = await fetch(profileUrl, {
       headers: {
@@ -51,10 +75,15 @@ export async function POST(req: Request) {
     const profile = profiles?.[0];
 
     if (!profile) {
-      return withCors({ error: "Invalid credentials" }, 401);
+      return withCors(
+        {
+          errorCode: "USER_NOT_FOUND",
+          error: "Username not found",
+        },
+        401
+      );
     }
 
-    // Login using email + password
     const tokenRes = await fetch(
       `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
       {
@@ -74,7 +103,10 @@ export async function POST(req: Request) {
 
     if (!tokenRes.ok) {
       return withCors(
-        { error: tokenJson.error_description || "Incorrect password" },
+        {
+          errorCode: "INVALID_PASSWORD",
+          error: "Incorrect password",
+        },
         401
       );
     }
@@ -86,9 +118,13 @@ export async function POST(req: Request) {
     });
 
   } catch (err: any) {
-    return withCors({ 
-      error: "Server error", 
-      detail: err.message 
-    }, 500);
+    return withCors(
+      {
+        errorCode: "SERVER_ERROR",
+        error: "Server error",
+        detail: err.message,
+      },
+      500
+    );
   }
 }

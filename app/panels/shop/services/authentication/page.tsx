@@ -1,13 +1,88 @@
 "use client";
 
-import { Users, UserCheck, UserX, CalendarClock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Users, UserCheck, UserX, CalendarClock, Loader2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function AuthenticationDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [totalEmployees, setTotalEmployees] = useState(0);
+
+  useEffect(() => {
+    fetchEmployeeCount();
+  }, []);
+
+  const fetchEmployeeCount = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        setError("User not authenticated");
+        setLoading(false);
+        return;
+      }
+
+      let orgId = null;
+
+      orgId = localStorage.getItem("org_id");
+      
+      if (!orgId && user.user_metadata?.org_id) {
+        orgId = user.user_metadata.org_id;
+      }
+      
+      if (!orgId) {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("org_id")
+          .eq("id", user.id)
+          .single();
+        
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+        }
+        
+        if (profile?.org_id) {
+          orgId = profile.org_id;
+          localStorage.setItem("org_id", orgId);
+        }
+      }
+      
+      if (!orgId) {
+        setError("Organization ID not found. Please check your profile settings.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`/api/employees/fetch?org_id=${orgId}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error("Error fetching employees:", errorData);
+        setError(`Failed to load employees: ${errorData.error || response.statusText}`);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      setTotalEmployees(data.employees?.length || 0);
+      
+    } catch (err) {
+      console.error("Error fetching employee count:", err);
+      setError("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const stats = [
     {
       title: "Total Employees",
-      value: "128",
+      value: loading ? "..." : totalEmployees.toString(),
       icon: Users,
       color: "text-blue-600",
       bg: "bg-blue-50",
@@ -15,7 +90,7 @@ export default function AuthenticationDashboard() {
     },
     {
       title: "Present Today",
-      value: "102",
+      value: "0",
       icon: UserCheck,
       color: "text-green-600",
       bg: "bg-green-50",
@@ -23,7 +98,7 @@ export default function AuthenticationDashboard() {
     },
     {
       title: "On Leave",
-      value: "18",
+      value: "0",
       icon: CalendarClock,
       color: "text-amber-600",
       bg: "bg-amber-50",
@@ -31,7 +106,7 @@ export default function AuthenticationDashboard() {
     },
     {
       title: "Absent",
-      value: "8",
+      value: "0",
       icon: UserX,
       color: "text-red-600",
       bg: "bg-red-50",
@@ -67,6 +142,19 @@ export default function AuthenticationDashboard() {
           </p>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+            <p className="text-red-700 text-sm">{error}</p>
+            <button 
+              onClick={fetchEmployeeCount}
+              className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((item) => (
@@ -79,8 +167,11 @@ export default function AuthenticationDashboard() {
                   <p className="text-sm text-gray-500 font-medium">
                     {item.title}
                   </p>
-                  <p className="text-3xl font-bold text-gray-800 mt-1">
+                  <p className="text-3xl font-bold text-gray-800 mt-1 flex items-center gap-2">
                     {item.value}
+                    {item.title === "Total Employees" && loading && (
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                    )}
                   </p>
                 </div>
                 <div
@@ -105,7 +196,6 @@ export default function AuthenticationDashboard() {
               Distribution of employee attendance
             </p>
 
-            {/* Pie Chart */}
             <ResponsiveContainer width="100%" height={224}>
               <PieChart>
                 <Pie
@@ -136,7 +226,6 @@ export default function AuthenticationDashboard() {
               Attendance movement across days
             </p>
 
-            {/* Line Chart */}
             <ResponsiveContainer width="100%" height={224}>
               <LineChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

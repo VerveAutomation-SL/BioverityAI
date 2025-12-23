@@ -22,7 +22,6 @@ export default function ProductDetailsPage() {
   useEffect(() => {
     async function loadProduct() {
       try {
-        // Fetch all products and find the one with matching ID
         const res = await fetch("/api/products/fetch");
         const json = await res.json();
         const found = json.products?.find((p: Product) => p.id === params.id);
@@ -70,21 +69,17 @@ export default function ProductDetailsPage() {
   }
 
   return (
-    <main className="min-h-screen mt-20 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      {/* Back Button */}
-      <div className="bg-white border-b border-gray-200 shadow-sm sticky top-20 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <button
-            onClick={() => router.push("/Shop")}
-            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back to Products
-          </button>
-        </div>
-      </div>
-
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       <div className="max-w-7xl mx-auto px-6 py-10">
+        {/* Back Button */}
+        <button
+          onClick={() => router.push("/Shop")}
+          className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium mb-8"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Back to Products
+        </button>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Image */}
           <div className="space-y-6">
@@ -100,9 +95,34 @@ export default function ProductDetailsPage() {
                 </svg>
                 Verified Product
               </div>
+            </div>            
+          </div>
+
+          {/* Right Column - Details */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                {product.name}
+              </h1>
+
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Package className="w-5 h-5 text-blue-600" />
+                  <h3 className="font-semibold text-gray-900">Description</h3>
+                </div>
+                <p className="text-gray-700 leading-relaxed">
+                  {product.description}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button className="w-full bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
+                  <ExternalLink className="w-5 h-5" />
+                  Request Quote
+                </button>
+              </div>
             </div>
 
-            {/* Additional Info Section */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <Package className="w-5 h-5 text-blue-600" />
@@ -123,75 +143,7 @@ export default function ProductDetailsPage() {
                 </li>
               </ul>
             </div>
-          </div>
-
-          {/* Right Column - Details */}
-          <div className="space-y-6">
-            {/* Product Info Card */}
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                {product.name}
-              </h1>
-
-              {/* Description */}
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <Package className="w-5 h-5 text-blue-600" />
-                  <h3 className="font-semibold text-gray-900">Description</h3>
-                </div>
-                <p className="text-gray-700 leading-relaxed">
-                  {product.description}
-                </p>
-              </div>
-
-              {/* Date Listed */}
-              {product.created_at && (
-                <div className="mb-6 pb-6 border-b border-gray-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="w-5 h-5 text-purple-600" />
-                    <h3 className="font-semibold text-gray-900">Listed Date</h3>
-                  </div>
-                  <p className="text-gray-700">
-                    {new Date(product.created_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
-                </div>
-              )}
-
-              {/* Contact Actions */}
-              <div className="space-y-3">
-                <button className="w-full bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
-                  <ExternalLink className="w-5 h-5" />
-                  Request Quote
-                </button>
-              </div>
-            </div>
-
-            {/* Organization Card */}
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-              <div className="flex items-center gap-2 mb-4">
-                <Building2 className="w-6 h-6 text-blue-600" />
-                <h3 className="font-bold text-gray-900 text-xl">Supplier Information</h3>
-              </div>
-
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-22 h-22 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <span className="text-xl font-bold text-white">
-                    {product.org_id?.substring(0, 2).toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Organization ID</p>
-                  <p className="text-sm text-gray-900 font-mono font-semibold">
-                    {product.org_id}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          </div>          
         </div>
       </div>
     </main>

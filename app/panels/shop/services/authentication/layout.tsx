@@ -13,6 +13,7 @@ import {
   BarChart3,
   CalendarDays,
   ChevronDown,
+  X,
 } from "lucide-react";
 
 interface Profile {
@@ -34,6 +35,7 @@ export default function AuthenticationLayout({
   );
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -61,9 +63,22 @@ export default function AuthenticationLayout({
     })();
   }, []);
 
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, []);
+
   if (loading || !profile) {
     return null;
   }
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Navbar */}
@@ -73,11 +88,32 @@ export default function AuthenticationLayout({
           role={profile.role}
           organizationLogo={profile.organization_logo}
           hideBrandLogo
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         />
       </div>
 
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-72 bg-white shadow-xl border-r border-slate-200 fixed left-0 top-0 h-screen flex flex-col z-50">
+      <aside
+        className={`w-72 bg-white shadow-xl border-r border-slate-200 fixed left-0 top-0 h-screen flex flex-col z-50 transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+      >
+        {/* Mobile Close Button */}
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="lg:hidden absolute top-4 right-4 p-2 rounded-lg hover:bg-slate-100 transition-colors"
+          aria-label="Close menu"
+        >
+          <X className="w-6 h-6 text-slate-600" />
+        </button>
+
         {/* Logo & Header Section */}
         <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-teal-50">
           <div className="flex items-center gap-3">
@@ -261,7 +297,7 @@ export default function AuthenticationLayout({
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-8 overflow-auto ml-72 mt-20">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto lg:ml-72 mt-20">
         <div className="max-w-7xl mx-auto">{children}</div>
       </main>
     </div>

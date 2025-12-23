@@ -1,9 +1,14 @@
-import { NextResponse } from "next/server";
+import { withCors, corsOptions } from "@/lib/cors";
 import { supabase } from "@/lib/supabaseClient";
+
+// Handle preflight
+export function OPTIONS() {
+  return corsOptions();
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const orgId = searchParams.get("orgId"); // optional
+  const orgId = searchParams.get("orgId");
 
   let query = supabase
     .from("profiles")
@@ -26,13 +31,9 @@ export async function GET(req: Request) {
   const { data, error } = await query;
 
   if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return withCors({ error: error.message }, 500);
   }
 
-  // Map response shape
   const users = (data || []).map((u) => ({
     id: u.id,
     username: u.username,
@@ -45,5 +46,5 @@ export async function GET(req: Request) {
     created_at: u.created_at,
   }));
 
-  return NextResponse.json({ users }, { status: 200 });
+  return withCors({ users }, 200);
 }

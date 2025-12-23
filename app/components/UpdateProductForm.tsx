@@ -66,18 +66,15 @@ export default function UpdateProductForm({
 
     try {
       let finalImageUrl = product.image_url;
-
-      // If user uploaded a new image
       if (imageFile) {
         finalImageUrl = await uploadProductImage(imageFile);
       }
 
-      // Update product
       const res = await apiFetch("/api/products/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: product.id,
+          idAC: product.id,
           name,
           description,
           imageUrl: finalImageUrl
@@ -103,7 +100,7 @@ export default function UpdateProductForm({
 
   return (
     <div className="relative bg-gradient-to-br from-white to-green-50 rounded-2xl shadow-xl border border-green-100 max-h-[80vh] flex flex-col">
-      {/* HEADER - Fixed at top */}
+      {/* HEADER */}
       <div className="flex items-center gap-3 p-8 pb-4">
         <div className="p-3 bg-green-700 rounded-xl shadow-lg">
           <Check className="w-6 h-6 text-white" />
