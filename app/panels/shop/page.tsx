@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import ShopNavbar from "@/app/components/ShopNavbar";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, DoorOpen } from "lucide-react";
 
 export default function ServicesPage() {
   const router = useRouter();
@@ -57,7 +57,6 @@ export default function ServicesPage() {
       />
 
       <div className="max-w-5xl mx-auto px-6 py-10">
-
         {/* Header */}
         <div className="text-center mb-10">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-700 to-green-700 bg-clip-text text-transparent">
@@ -103,8 +102,34 @@ export default function ServicesPage() {
               </div>
             </div>
           )}
-        </div>
 
+          {services.includes("door_control") && (
+            <div
+              onClick={() => router.push("/panels/shop/services/door-control")}
+              className="cursor-pointer group relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition"></div>
+
+              <div className="relative bg-white border-2 border-blue-100 rounded-2xl p-6 hover:border-blue-300 transition group-hover:shadow-xl">
+                <div className="w-16 h-16 mx-auto bg-blue-50 border-2 border-blue-200 rounded-2xl flex items-center justify-center mb-4">
+                  <DoorOpen className="w-8 h-8 text-blue-600" />
+                </div>
+
+                <h3 className="text-xl font-bold text-center">
+                  Door Control
+                </h3>
+
+                <p className="text-sm text-gray-600 text-center mt-2">
+                  Control door access using biometric verification
+                </p>
+
+                <div className="text-center text-blue-600 font-semibold mt-4 text-sm">
+                  Open Door Control
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,217 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import ShopNavbar from "@/app/components/ShopNavbar";
+import {
+  LayoutDashboard,
+  DoorClosed,
+  Fingerprint,
+  ClipboardList,
+  X,
+} from "lucide-react";
+
+interface Profile {
+  role: "admin" | "user";
+  full_name: string;
+  organization_logo?: string | null;
+}
+
+export default function DoorControlLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("role, full_name, organization_logo")
+        .eq("id", user.id)
+        .single();
+
+      if (!prof) {
+        router.replace("/login");
+        return;
+      }
+
+      setProfile(prof);
+      setLoading(false);
+    })();
+  }, []);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, []);
+
+  if (loading || !profile) {
+    return null;
+  }
+
+  const sidebarItems = [
+    {
+      label: "Dashboard",
+      href: "/panels/shop/services/door-control",
+      icon: LayoutDashboard,
+    },
+    {
+      label: "Door Status",
+      href: "/panels/shop/services/door-control/door",
+      icon: DoorClosed,
+    },
+    {
+      label: "Access Point",
+      href: "/panels/shop/services/door-control/access-point",
+      icon: Fingerprint,
+    },
+    {
+      label: "Access Logs",
+      href: "/panels/shop/services/door-control/logs",
+      icon: ClipboardList,
+    },
+  ];
+
+  return (
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Navbar */}
+      <div className="fixed top-0 left-0 right-0 z-40">
+        <ShopNavbar
+          fullName={profile.full_name}
+          role={profile.role}
+          organizationLogo={profile.organization_logo}
+          hideBrandLogo
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+        />
+      </div>
+
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`w-72 bg-white shadow-xl border-r border-slate-200 fixed left-0 top-0 h-screen flex flex-col z-50 transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+      >
+        {/* Mobile Close Button */}
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="lg:hidden absolute top-4 right-4 p-2 rounded-lg hover:bg-slate-100 transition-colors"
+          aria-label="Close menu"
+        >
+          <X className="w-6 h-6 text-slate-600" />
+        </button>
+
+        {/* Logo & Header Section */}
+        <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-center gap-3">
+            <div className="w-20 h-20 rounded-xl flex items-center justify-center">
+              <img
+                src="/assets/images/logo.png"
+                alt="Logo"
+                className="w-16 h-16 object-contain"
+              />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent">
+                Door Control
+              </h2>
+              <p className="text-xs text-slate-500 font-medium">Access Management</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
+          {sidebarItems.map((item) => {
+            const isActive = pathname === item.href;
+            const Icon = item.icon;
+
+            return (
+              <button
+                key={item.href}
+                onClick={() => router.push(item.href)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all duration-200
+                  ${isActive
+                    ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-200 scale-105"
+                    : "text-slate-700 hover:bg-slate-100 hover:scale-105"
+                  }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Go Back Button */}
+        <div className="p-4 border-t border-slate-200">
+          <button
+            onClick={() => router.push("/panels/shop")}
+            className="group relative w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 
+            text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:from-blue-700 
+            hover:to-indigo-800 transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-blue-500 opacity-0 
+            group-hover:opacity-20 transition-opacity duration-300"></div>
+
+            <svg
+              className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform duration-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+
+            <span className="relative z-10">Back to Services</span>
+
+            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform 
+            duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"></div>
+          </button>
+        </div>
+
+        {/* Footer Info */}
+        <div className="w-full p-4 border-t border-slate-200 bg-slate-50">
+          <div className="text-xs text-slate-500 text-center">
+            <p className="font-medium">Version 1.0.0</p>
+            <p className="mt-1">© 2026 Door Control System</p>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto lg:ml-72 mt-20">
+        <div className="max-w-7xl mx-auto">{children}</div>
+      </main>
+    </div>
+  );
+}

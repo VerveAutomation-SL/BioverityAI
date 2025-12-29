@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Save, User, Mail, Shield, Image as ImageIcon, Upload } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiFetch } from "@/lib/apiClient";
@@ -23,6 +23,39 @@ export default function UpdateUserModal({
   const [organizationLogo, setOrganizationLogo] = useState(user.organization_logo || "");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [allServices, setAllServices] = useState<any[]>([]);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  async function fetchServices() {
+    try {
+      const servicesRes = await apiFetch("/api/services");
+      const servicesData = await servicesRes.json();
+
+      const userServicesRes = await apiFetch(
+        `/api/user-services?user_id=${user.id}`
+      );
+      const userServicesData = await userServicesRes.json();
+
+      if (servicesRes.ok) {
+        setAllServices(servicesData);
+      }
+
+      if (userServicesRes.ok) {
+        setSelectedServices(
+          userServicesData.services.map((s: any) => s.service_key)
+        );
+      }
+    } catch {
+      toast.error("Failed to load services");
+    } finally {
+      setLoadingServices(false);
+    }
+  }
 
   async function handleLogoUpload(file: File) {
     setUploadingLogo(true);
@@ -84,7 +117,16 @@ export default function UpdateUserModal({
         return;
       }
 
-      toast.success("User updated successfully!");
+      await apiFetch("/api/user-services/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user.id,
+          service_keys: selectedServices,
+        }),
+      });
+
+      toast.success("User and services updated successfully!");
       onUpdated();
       onClose();
     } catch {
@@ -205,6 +247,53 @@ export default function UpdateUserModal({
                 <option value="user">User</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700 mb-2 block">
+              Enabled Services
+            </label>
+
+            {loadingServices ? (
+              <p className="text-sm text-gray-500">Loading services...</p>
+            ) : (
+              <div className="space-y-2">
+                {allServices.map((service) => (
+                  <label
+                    key={service.key}
+                    className="flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer hover:bg-emerald-50 transition-all"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedServices.includes(service.key)}
+                      onChange={(e) => {
+                        setSelectedServices((prev) =>
+                          e.target.checked
+                            ? [...prev, service.key]
+                            : prev.filter((k) => k !== service.key)
+                        );
+                      }}
+                      className="mt-1"
+                    />
+
+                    <div>
+                      <p className="font-medium text-gray-800">{service.name}</p>
+                      {service.description && (
+                        <p className="text-xs text-gray-500">
+                          {service.description}
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                ))}
+
+                {allServices.length === 0 && (
+                  <p className="text-sm text-gray-500">
+                    No services available.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

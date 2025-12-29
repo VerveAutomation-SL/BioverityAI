@@ -27,6 +27,10 @@ export default function UserRegistrationPage() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [showServices, setShowServices] = useState(false);
 
+  // 1️⃣ Add state for dynamic services
+  const [services, setServices] = useState<any[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+
   function toggleService(service: string) {
     setSelectedServices((prev) =>
       prev.includes(service)
@@ -56,6 +60,25 @@ export default function UserRegistrationPage() {
       setLoading(false);
     })();
   }, []);
+
+  // 2️⃣ Fetch services on page load
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  async function fetchServices() {
+    try {
+      const res = await fetch("/api/services");
+      const data = await res.json();
+      if (res.ok) {
+        setServices(data);
+      }
+    } catch {
+      console.error("Failed to load services");
+    } finally {
+      setLoadingServices(false);
+    }
+  }
 
   async function handleRegister() {
     if (!email || !username || !organizationName || !password || !confirmPassword) {
@@ -267,7 +290,7 @@ export default function UserRegistrationPage() {
                 />
               </div>
 
-              {/* SERVICES DROPDOWN */}
+              {/* 3️⃣ SERVICES DROPDOWN - Dynamic Version */}
               <div className="relative">
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                   <Lock className="w-4 h-4 text-emerald-600" />
@@ -281,7 +304,9 @@ export default function UserRegistrationPage() {
                 >
                   <span className="text-sm text-gray-700">
                     {selectedServices.length > 0
-                      ? selectedServices.join(", ")
+                      ? selectedServices.map(key => 
+                          services.find(s => s.key === key)?.name || key
+                        ).join(", ")
                       : "Select services"}
                   </span>
                   <span className="text-gray-400">▾</span>
@@ -289,23 +314,33 @@ export default function UserRegistrationPage() {
 
                 {showServices && (
                   <div className="absolute z-20 mt-2 w-full bg-white border-2 border-gray-200 rounded-xl shadow-lg p-3 space-y-2">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedServices.includes("authentication")}
-                        onChange={() => toggleService("authentication")}
-                        className="w-4 h-4 accent-emerald-600"
-                      />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">
-                          Authentication
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          Access authentication dashboard
-                        </p>
-                      </div>
-                    </label>
-
+                    {loadingServices ? (
+                      <p className="text-sm text-gray-500">Loading services...</p>
+                    ) : services.length === 0 ? (
+                      <p className="text-sm text-gray-500">No services available</p>
+                    ) : (
+                      services.map((service) => (
+                        <label
+                          key={service.key}
+                          className="flex items-center gap-3 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedServices.includes(service.key)}
+                            onChange={() => toggleService(service.key)}
+                            className="w-4 h-4 accent-emerald-600"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">
+                              {service.name}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              {service.description}
+                            </p>
+                          </div>
+                        </label>
+                      ))
+                    )}
                     <div className="pt-2 text-center">
                       <button
                         type="button"

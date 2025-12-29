@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import ShopNavbar from "@/app/components/ShopNavbar";
-import { Users, PackageSearch } from "lucide-react";
+import { Users, PackageSearch, Layers } from "lucide-react";
 
 export default function AdminHome() {
   const router = useRouter();
@@ -84,41 +84,75 @@ export default function AdminHome() {
         </div>
 
         {/* GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-{/* Registration card */}
-<div className="group relative">
-  <div className="relative bg-white border-2 border-emerald-100 rounded-2xl p-6 pb-10 transition-all duration-300 shadow-lg">
-    <div className="mb-4 relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-600 blur-lg opacity-30 rounded-full"></div>
-      <div className="relative w-16 h-16 mx-auto bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl flex items-center justify-center border-2 border-emerald-200">
-        <Users className="w-8 h-8 text-emerald-600" />
-      </div>
-    </div>
-    <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">
-      Users
-    </h3>
-    <p className="text-gray-600 mb-3 leading-relaxed text-sm">
-      Register new users with verification under your organization
-    </p>
-    <div className="flex flex-wrap gap-2 mb-3">
-      {/* User Management */}
-      <button
-        onClick={() => router.push("/panels/admin/users")}
-        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-full border border-emerald-700 cursor-pointer transition-all hover:shadow-md"
-      >
-        User Management
-      </button>
-      {/* New User */}
-      <button
-        onClick={() => router.push("/panels/admin/user-registration")}
-        className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-full border border-green-700 cursor-pointer transition-all hover:shadow-md"
-      >
-        New User
-      </button>
-    </div>
-  </div>
-</div>
+          {/* Registration card */}
+          <div className="group relative">
+            <div className="relative bg-white border-2 border-emerald-100 rounded-2xl p-6 pb-10 transition-all duration-300 shadow-lg">
+              <div className="mb-4 relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-600 blur-lg opacity-30 rounded-full"></div>
+                <div className="relative w-16 h-16 mx-auto bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl flex items-center justify-center border-2 border-emerald-200">
+                  <Users className="w-8 h-8 text-emerald-600" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">
+                Users
+              </h3>
+              <p className="text-gray-600 mb-3 leading-relaxed text-sm">
+                Register new users with verification under your organization
+              </p>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {/* User Management */}
+                <button
+                  onClick={() => router.push("/panels/admin/users")}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-full border border-emerald-700 cursor-pointer transition-all hover:shadow-md"
+                >
+                  User Management
+                </button>
+                {/* New User */}
+                <button
+                  onClick={() => router.push("/panels/admin/user-registration")}
+                  className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-full border border-green-700 cursor-pointer transition-all hover:shadow-md"
+                >
+                  New User
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Services card */}
+          <div className="group relative">
+            <div className="relative bg-white border-2 border-purple-100 rounded-2xl p-6 pb-10 transition-all duration-300 shadow-lg">
+              <div className="mb-4 relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-indigo-600 blur-lg opacity-30 rounded-full"></div>
+                <div className="relative w-16 h-16 mx-auto bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl flex items-center justify-center border-2 border-purple-200">
+                  <Layers className="w-8 h-8 text-purple-600" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">
+                Services
+              </h3>
+              <p className="text-gray-600 mb-3 leading-relaxed text-sm">
+                Create and manage platform services available to users
+              </p>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {/* Manage Services */}
+                <button
+                  onClick={() => router.push("/panels/admin/services")}
+                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-full border border-purple-700 cursor-pointer transition-all hover:shadow-md"
+                >
+                  Manage Services
+                </button>
+                {/* New Service */}
+                <button
+                  onClick={() => router.push("/panels/admin/services/new-service")}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-full border border-indigo-700 cursor-pointer transition-all hover:shadow-md"
+                >
+                  New Service
+                </button>
+              </div>
+            </div>
+          </div>
 
           {/* Product card */}
           <div

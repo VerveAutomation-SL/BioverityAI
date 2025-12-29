@@ -42,6 +42,9 @@ export default function UserManagementPage() {
     const [roleFilter, setRoleFilter] = useState("all");
     const [refreshing, setRefreshing] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    
+    // A1️⃣ Add state to cache user services
+    const [userServices, setUserServices] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
         (async () => {
@@ -92,6 +95,27 @@ export default function UserManagementPage() {
             toast.error("Failed to refresh users");
         } finally {
             setRefreshing(false);
+        }
+    }
+
+    // A2️⃣ Add a helper to fetch services for ONE user
+    async function fetchUserServices(userId: string) {
+        if (userServices[userId]) return; // already cached
+
+        try {
+            const res = await apiFetch(`/api/user-services?user_id=${userId}`);
+            const data = await res.json();
+
+            if (!res.ok) return;
+
+            setUserServices((prev) => ({
+                ...prev,
+                [userId]: data.services.map(
+                    (s: any) => s.services?.name
+                ),
+            }));
+        } catch {
+            // silent fail (do not break UI)
         }
     }
 
@@ -305,7 +329,11 @@ export default function UserManagementPage() {
                                     </tr>
                                 ) : (
                                     filteredUsers.map((u) => (
-                                        <tr key={u.id} className="hover:bg-emerald-50/50 transition-colors">
+                                        <tr 
+                                            key={u.id} 
+                                            className="hover:bg-emerald-50/50 transition-colors"
+                                            onMouseEnter={() => fetchUserServices(u.id)}
+                                        >
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3">
                                                     {u.organization_logo ? (
@@ -327,6 +355,19 @@ export default function UserManagementPage() {
                                                                 {u.email}
                                                             </p>
                                                         )}
+                                                        {/* A3️⃣ Service badges */}
+                                                        {userServices[u.id] && (
+                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                {userServices[u.id].map((name) => (
+                                                                    <span
+                                                                        key={name}
+                                                                        className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-md font-medium"
+                                                                    >
+                                                                        {name}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -342,12 +383,13 @@ export default function UserManagementPage() {
                                             </td>
                                             <td className="p-4">
                                                 <span
-                                                    className={`px-3 py-1 rounded-full text-sm font-semibold ${u.role === "admin"
+                                                    className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                                        u.role === "admin"
                                                             ? "bg-red-100 text-red-700"
                                                             : u.role === "user"
                                                                 ? "bg-blue-100 text-blue-700"
                                                                 : "bg-gray-100 text-gray-700"
-                                                        }`}
+                                                    }`}
                                                 >
                                                     {u.role?.charAt(0).toUpperCase() + u.role?.slice(1)}
                                                 </span>
