@@ -83,7 +83,7 @@ export default function UserRegistrationPage() {
         logo_url: organizationLogo,
         username,
         org_id: orgId,
-        role: "shop",
+        role: "user",
         services: selectedServices,
       }),
     });

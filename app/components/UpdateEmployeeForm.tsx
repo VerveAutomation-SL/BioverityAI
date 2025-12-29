@@ -152,25 +152,49 @@ export default function UpdateEmployeeForm({
     setEnrolling(true);
 
     try {
-      const res = await fetch("/api/biometric/enroll", {
+      // 1️⃣ Call LOCAL biometric service (runs on boss PC)
+      const deviceRes = await fetch("https://localhost:5050/enroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
+          employee_id: employee.id
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!deviceRes.ok) {
+        const err = await deviceRes.json().catch(() => ({}));
+        throw new Error(err.error || "Device enrollment failed");
+      }
+
+      const deviceData = await deviceRes.json();
+
+      if (!deviceData.template_id) {
+        throw new Error("No template returned from device");
+      }
+
+      // 2️⃣ Save template to backend (cloud-safe)
+      const saveRes = await fetch("/api/biometric/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           employee_id: employee.id,
-          org_id: orgId
+          org_id: orgId,
+          template_id: deviceData.template_id,
         }),
       });
 
-      const data = await res.json();
+      const saveData = await saveRes.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Enrollment failed");
+      if (!saveRes.ok) {
+        throw new Error(saveData.error || "Failed to save biometric data");
       }
 
       toast.success("Finger vein enrolled successfully!");
-      if (onSuccess) onSuccess();
-    } catch (error: any) {
-      toast.error(error.message || "Enrollment failed");
+      onSuccess?.();
+
+    } catch (err: any) {
+      toast.error(err.message || "Enrollment failed");
     } finally {
       setEnrolling(false);
     }
@@ -321,11 +345,11 @@ export default function UpdateEmployeeForm({
                   Biometric Enrollment
                 </h3>
                 <p className="text-sm text-slate-600 mb-4">
-                  {hasEnrollment 
+                  {hasEnrollment
                     ? `Employee has ${enrolledCount} active biometric enrollment(s). You can re-enroll to update the fingerprint data.`
                     : hasPendingEnrollment
-                    ? "Enrollment is pending. Complete the enrollment process or start a new one."
-                    : "Capture the employee's finger vein data using the connected biometric device for secure authentication."
+                      ? "Enrollment is pending. Complete the enrollment process or start a new one."
+                      : "Capture the employee's finger vein data using the connected biometric device for secure authentication."
                   }
                 </p>
 

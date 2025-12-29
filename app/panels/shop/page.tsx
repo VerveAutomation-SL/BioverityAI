@@ -25,7 +25,7 @@ export default function ServicesPage() {
         .eq("id", user.id)
         .single();
 
-      if (!prof || prof.role !== "shop") {
+      if (!prof || prof.role !== "user") {
         return router.replace("/panels/admin");
       }
 

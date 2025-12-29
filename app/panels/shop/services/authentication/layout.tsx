@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 interface Profile {
-  role: "admin" | "shop";
+  role: "admin" | "user";
   full_name: string;
   organization_logo?: string | null;
 }

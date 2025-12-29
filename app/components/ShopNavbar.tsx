@@ -8,7 +8,7 @@ import { User, LogOut, KeyRound, Menu } from "lucide-react";
 
 interface ShopNavbarProps {
   fullName: string;
-  role: "admin" | "shop";
+  role: "admin" | "user";
   organizationLogo?: string | null;
   organizationName?: string;
   hideBrandLogo?: boolean;

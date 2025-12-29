@@ -344,7 +344,7 @@ export default function UserManagementPage() {
                                                 <span
                                                     className={`px-3 py-1 rounded-full text-sm font-semibold ${u.role === "admin"
                                                             ? "bg-red-100 text-red-700"
-                                                            : u.role === "shop"
+                                                            : u.role === "user"
                                                                 ? "bg-blue-100 text-blue-700"
                                                                 : "bg-gray-100 text-gray-700"
                                                         }`}

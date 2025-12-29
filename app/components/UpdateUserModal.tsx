@@ -19,7 +19,7 @@ export default function UpdateUserModal({
 }: UpdateUserModalProps) {
   const [username, setUsername] = useState(user.username || "");
   const [email, setEmail] = useState(user.email || "");
-  const [role, setRole] = useState(user.role || "shop");
+  const [role, setRole] = useState(user.role || "user");
   const [organizationLogo, setOrganizationLogo] = useState(user.organization_logo || "");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -202,7 +202,7 @@ export default function UpdateUserModal({
                 className="w-full pl-10 border-2 border-gray-200 rounded-xl p-3 focus:border-emerald-500 outline-none appearance-none bg-white cursor-pointer transition-all"
               >
                 <option value="admin">Admin</option>
-                <option value="shop">Shop</option>
+                <option value="user">User</option>
               </select>
             </div>
           </div>

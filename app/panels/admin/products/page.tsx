@@ -10,7 +10,7 @@ import { Package, Plus, Trash2, Image as ImageIcon, ArrowLeft } from "lucide-rea
 import { apiFetch } from "@/lib/apiClient";
 
 interface Profile {
-  role: "admin" | "shop";
+  role: "admin" | "user";
   full_name: string;
   organization_logo?: string | null;
 }
