@@ -6,7 +6,8 @@ export const API_BASE_URL =
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const url = `${API_BASE_URL}${path}`;
 
-  const res = await fetch(url, options);
-
-  return res;
+  return fetch(url, {
+    ...options,
+    credentials: "include",
+  });
 }
