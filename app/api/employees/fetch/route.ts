@@ -1,9 +1,8 @@
 import { supabase } from "@/lib/supabaseClient";
 import { withCors, corsOptions } from "@/lib/cors";
 
-// Handle preflight
-export function OPTIONS() {
-  return corsOptions();
+export function OPTIONS(req: Request) {
+  return corsOptions(req);
 }
 
 export async function GET(req: Request) {
@@ -15,7 +14,8 @@ export async function GET(req: Request) {
     if (!org_id) {
       return withCors(
         { error: "org_id is required" },
-        400
+        400,
+        req
       );
     }
 
@@ -41,20 +41,23 @@ export async function GET(req: Request) {
     if (error) {
       return withCors(
         { error: error.message },
-        500
+        500,
+        req
       );
     }
 
     // 3️⃣ Success
     return withCors(
       { employees: data },
-      200
+      200,
+      req
     );
 
   } catch (err: any) {
     return withCors(
       { error: err.message || "Server error" },
-      500
+      500,
+      req
     );
   }
 }

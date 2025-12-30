@@ -3,8 +3,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { withCors, corsOptions } from "@/lib/cors";
 
 // OPTIONS handler (required for CORS)
-export function OPTIONS() {
-  return corsOptions();
+export function OPTIONS(req: Request) {
+  return corsOptions(req);
 }
 
 export async function POST(req: Request) {
@@ -28,8 +28,8 @@ export async function POST(req: Request) {
       return withCors({ error: error.message }, 500);
     }
 
-    return withCors({ success: true }, 200);
+    return withCors({ success: true }, 200,req);
   } catch (err: any) {
-    return withCors({ error: err.message }, 500);
+    return withCors({ error: err.message }, 500,req);
   }
 }

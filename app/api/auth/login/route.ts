@@ -4,9 +4,8 @@ import { withCors, corsOptions } from "@/lib/cors";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Handle OPTIONS
-export function OPTIONS() {
-  return corsOptions();
+export function OPTIONS(req: Request) {
+  return corsOptions(req);
 }
 
 export async function POST(req: Request) {
@@ -15,19 +14,24 @@ export async function POST(req: Request) {
     const { orgId, username, password, debug } = body;
 
     if (debug === true) {
-      return withCors({
-        debug: true,
-        received_orgId: orgId ?? null,
-        received_username: username ?? null,
-        env_supabase_url: SUPABASE_URL ?? "undefined",
-        env_anon_key: ANON_KEY ? "loaded" : "missing",
-      });
+      return withCors(
+        {
+          debug: true,
+          received_orgId: orgId ?? null,
+          received_username: username ?? null,
+          env_supabase_url: SUPABASE_URL ?? "undefined",
+          env_anon_key: ANON_KEY ? "loaded" : "missing",
+        },
+        200,
+        req
+      );
     }
 
     if (!orgId || !username || !password) {
       return withCors(
         { errorCode: "MISSING_FIELDS", error: "Missing fields" },
-        400
+        400,
+        req
       );
     }
 
@@ -50,11 +54,9 @@ export async function POST(req: Request) {
 
     if (!Array.isArray(orgCheck) || orgCheck.length === 0) {
       return withCors(
-        {
-          errorCode: "ORG_NOT_FOUND",
-          error: "Organization not found",
-        },
-        401
+        { errorCode: "ORG_NOT_FOUND", error: "Organization not found" },
+        401,
+        req
       );
     }
 
@@ -76,11 +78,9 @@ export async function POST(req: Request) {
 
     if (!profile) {
       return withCors(
-        {
-          errorCode: "USER_NOT_FOUND",
-          error: "Username not found",
-        },
-        401
+        { errorCode: "USER_NOT_FOUND", error: "Username not found" },
+        401,
+        req
       );
     }
 
@@ -103,20 +103,21 @@ export async function POST(req: Request) {
 
     if (!tokenRes.ok) {
       return withCors(
-        {
-          errorCode: "INVALID_PASSWORD",
-          error: "Incorrect password",
-        },
-        401
+        { errorCode: "INVALID_PASSWORD", error: "Incorrect password" },
+        401,
+        req
       );
     }
 
-    return withCors({
-      success: true,
-      token: tokenJson,
-      profile,
-    });
-
+    return withCors(
+      {
+        success: true,
+        token: tokenJson,
+        profile,
+      },
+      200,
+      req
+    );
   } catch (err: any) {
     return withCors(
       {
@@ -124,7 +125,8 @@ export async function POST(req: Request) {
         error: "Server error",
         detail: err.message,
       },
-      500
+      500,
+      req
     );
   }
 }

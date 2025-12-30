@@ -28,30 +28,50 @@ export default function AccessPointPage() {
     department: string;
   }>(null);
 
-  function handleVerify() {
+  async function handleVerify() {
     setUiState("processing");
 
-    setTimeout(() => {
-      const matched = true; 
+    try {
+      const res = await fetch("https://localhost:5050/verify", {
+        method: "POST",
+      });
 
-      if (matched) {
+      const data = await res.json();
+
+      if (data.status === "matched") {
         setEmployee({
-          id: "EMP001",
-          name: "John Silva",
+          id: data.employee_id,
+          name: "Dummy Employee",
           department: "Operations",
         });
         setUiState("matched");
       } else {
-        setEmployee(null);
         setUiState("not_found");
       }
-    }, 1500);
+    } catch (err) {
+      console.error(err);
+      setUiState("not_found");
+    }
   }
 
-  function handleDoorAction() {
-    setDoorState((prev) =>
-      prev === "locked" ? "unlocked" : "locked"
-    );
+  async function handleDoorAction() {
+    try {
+      const endpoint =
+        doorState === "locked"
+          ? "https://localhost:5050/door/open"
+          : "https://localhost:5050/door/close";
+
+      const res = await fetch(endpoint, { method: "POST" });
+      const data = await res.json();
+
+      if (data.Success) {
+        setDoorState(
+          data.State === "opened" ? "unlocked" : "locked"
+        );
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   function handleGoBack() {
@@ -114,10 +134,9 @@ export default function AccessPointPage() {
             <button
               onClick={handleDoorAction}
               className={`mt-6 w-full py-3 rounded-xl font-semibold text-white transition
-                ${
-                  doorState === "locked"
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-red-600 hover:bg-red-700"
+                ${doorState === "locked"
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "bg-red-600 hover:bg-red-700"
                 }`}
             >
               {doorState === "locked" ? (

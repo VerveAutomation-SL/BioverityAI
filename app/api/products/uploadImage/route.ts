@@ -3,8 +3,8 @@ import { withCors, corsOptions } from "@/lib/cors";
 import { createClient } from "@supabase/supabase-js";
 
 // OPTIONS handler (CORS)
-export function OPTIONS() {
-  return corsOptions();
+export function OPTIONS(req: Request) {
+  return corsOptions(req);
 }
 
 export async function POST(req: Request) {
@@ -25,7 +25,11 @@ export async function POST(req: Request) {
     const file = formData.get("file") as File;
 
     if (!file) {
-      return withCors({ error: "No file uploaded" }, 400);
+      return withCors(
+        { error: "No file uploaded" },
+        400,
+        req
+      );
     }
 
     const ext = file.name.split(".").pop();
@@ -40,15 +44,28 @@ export async function POST(req: Request) {
       });
 
     if (error) {
-      return withCors({ error: error.message }, 500);
+      return withCors(
+        { error: error.message },
+        500,
+        req
+      );
     }
 
     const { data } = supabase.storage
       .from("products")
       .getPublicUrl(fileName);
 
-    return withCors({ url: data.publicUrl }, 200);
+    return withCors(
+      { url: data.publicUrl },
+      200,
+      req
+    );
+
   } catch (err: any) {
-    return withCors({ error: err.message }, 500);
+    return withCors(
+      { error: err.message || "Server error" },
+      500,
+      req
+    );
   }
 }

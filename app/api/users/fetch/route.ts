@@ -2,8 +2,8 @@ import { withCors, corsOptions } from "@/lib/cors";
 import { supabase } from "@/lib/supabaseClient";
 
 // Handle preflight
-export function OPTIONS() {
-  return corsOptions();
+export function OPTIONS(req: Request) {
+  return corsOptions(req);
 }
 
 export async function GET(req: Request) {
@@ -31,7 +31,11 @@ export async function GET(req: Request) {
   const { data, error } = await query;
 
   if (error) {
-    return withCors({ error: error.message }, 500);
+    return withCors(
+      { error: error.message },
+      500,
+      req
+    );
   }
 
   const users = (data || []).map((u) => ({
@@ -46,5 +50,9 @@ export async function GET(req: Request) {
     created_at: u.created_at,
   }));
 
-  return withCors({ users }, 200);
+  return withCors(
+    { users },
+    200,
+    req
+  );
 }
