@@ -150,8 +150,46 @@ export default function UpdateEmployeeForm({
 
   const handleEnroll = async () => {
     setEnrolling(true);
+    let pollInterval: NodeJS.Timeout | null = null;
 
     try {
+      // STEP 4.1 - Start polling enrollment status
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await fetch("https://localhost:5050/enroll/status");
+          const data = await res.json();
+
+          switch (data.stage) {
+            case "PLACE_FINGER_1":
+            case "PLACE_FINGER_2":
+            case "PLACE_FINGER_3":
+              toast("Place finger on device", { icon: "👆" });
+              break;
+
+            case "REMOVE_FINGER":
+              toast("Please remove your finger", { icon: "✋" });
+              break;
+
+            case "CAPTURED_1":
+            case "CAPTURED_2":
+            case "CAPTURED_3":
+              toast.success("Finger captured!");
+              break;
+
+            case "DONE":
+              if (pollInterval) clearInterval(pollInterval);
+              break;
+
+            case "ERROR":
+              if (pollInterval) clearInterval(pollInterval);
+              toast.error("Enrollment error");
+              break;
+          }
+        } catch {
+          // Ignore polling errors silently
+        }
+      }, 500);
+
       // 1️⃣ Call LOCAL biometric service (runs on boss PC)
       const deviceRes = await fetch("https://localhost:5050/enroll", {
         method: "POST",
@@ -159,7 +197,7 @@ export default function UpdateEmployeeForm({
         body: JSON.stringify({
           employee_id: employee.id
         }),
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(30000), // Increased timeout for 3 finger scans
       });
 
       if (!deviceRes.ok) {
@@ -196,6 +234,8 @@ export default function UpdateEmployeeForm({
     } catch (err: any) {
       toast.error(err.message || "Enrollment failed");
     } finally {
+      // Clean up polling interval
+      if (pollInterval) clearInterval(pollInterval);
       setEnrolling(false);
     }
   };
