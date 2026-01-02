@@ -151,6 +151,7 @@ export default function UpdateEmployeeForm({
   const handleEnroll = async () => {
     setEnrolling(true);
     let pollInterval: NodeJS.Timeout | null = null;
+    let lastStage = "";
 
     try {
       // STEP 4.1 - Start polling enrollment status
@@ -159,31 +160,36 @@ export default function UpdateEmployeeForm({
           const res = await fetch("https://localhost:5050/enroll/status");
           const data = await res.json();
 
-          switch (data.stage) {
-            case "PLACE_FINGER_1":
-            case "PLACE_FINGER_2":
-            case "PLACE_FINGER_3":
-              toast("Place finger on device", { icon: "👆" });
-              break;
+          // 5️⃣ Prevent toast spam - only show toast when stage changes
+          if (data.stage !== lastStage) {
+            lastStage = data.stage;
 
-            case "REMOVE_FINGER":
-              toast("Please remove your finger", { icon: "✋" });
-              break;
+            switch (data.stage) {
+              case "PLACE_FINGER_1":
+              case "PLACE_FINGER_2":
+              case "PLACE_FINGER_3":
+                toast("Place finger on device", { icon: "👆" });
+                break;
 
-            case "CAPTURED_1":
-            case "CAPTURED_2":
-            case "CAPTURED_3":
-              toast.success("Finger captured!");
-              break;
+              case "REMOVE_FINGER":
+                toast("Please remove your finger", { icon: "✋" });
+                break;
 
-            case "DONE":
-              if (pollInterval) clearInterval(pollInterval);
-              break;
+              case "CAPTURED_1":
+              case "CAPTURED_2":
+              case "CAPTURED_3":
+                toast.success("Finger captured!");
+                break;
 
-            case "ERROR":
-              if (pollInterval) clearInterval(pollInterval);
-              toast.error("Enrollment error");
-              break;
+              case "DONE":
+                if (pollInterval) clearInterval(pollInterval);
+                break;
+
+              case "ERROR":
+                if (pollInterval) clearInterval(pollInterval);
+                toast.error("Enrollment error");
+                break;
+            }
           }
         } catch {
           // Ignore polling errors silently
