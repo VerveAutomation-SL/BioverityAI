@@ -18,7 +18,7 @@ export default function DoorStatusPage() {
   const lastAction = {
     time: "10:16 AM",
     by: "EMP001 – John Silva",
-    action: "Door Opened",
+    action: "Door Opened now",
   };
 
   async function toggleDoor() {
