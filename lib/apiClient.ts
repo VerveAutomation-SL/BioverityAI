@@ -1,12 +1,8 @@
-export const API_BASE_URL =
-  process.env.NODE_ENV === "production"
-    ? "https://www.bioverityai.com"
-    : "http://localhost:3000";
-
-export async function apiFetch(path: string, options: RequestInit = {}) {
-  const url = `${API_BASE_URL}${path}`;
-
-  return fetch(url, {
+export async function apiFetch(
+  path: string,
+  options: RequestInit = {}
+) {
+  return fetch(path, {
     ...options,
     credentials: "include",
   });
