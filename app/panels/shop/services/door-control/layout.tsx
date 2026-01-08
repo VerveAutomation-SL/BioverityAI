@@ -84,11 +84,6 @@ export default function DoorControlLayout({
       icon: DoorClosed,
     },
     {
-      label: "Access Point",
-      href: "/panels/shop/services/door-control/access-point",
-      icon: Fingerprint,
-    },
-    {
       label: "Access Logs",
       href: "/panels/shop/services/door-control/logs",
       icon: ClipboardList,

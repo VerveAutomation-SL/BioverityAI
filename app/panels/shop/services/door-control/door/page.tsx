@@ -21,10 +21,29 @@ export default function DoorStatusPage() {
     action: "Door Opened",
   };
 
-  function toggleDoor() {
-    setDoorState((prev) =>
-      prev === "locked" ? "unlocked" : "locked"
-    );
+  async function toggleDoor() {
+    const nextState = doorState === "locked" ? "unlocked" : "locked";
+
+    const endpoint =
+      nextState === "unlocked"
+        ? "/door/open"
+        : "/door/close";
+
+    try {
+      const res = await fetch(
+        "https://localhost:5050" + endpoint,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) throw new Error("Door command failed");
+
+      setDoorState(nextState);
+    } catch (err) {
+      alert("Failed to control door");
+    }
   }
 
   return (
@@ -54,11 +73,10 @@ export default function DoorStatusPage() {
             </div>
             <div
               className={`w-12 h-12 rounded-xl flex items-center justify-center
-              ${
-                doorState === "locked"
+              ${doorState === "locked"
                   ? "bg-red-50 text-red-600"
                   : "bg-emerald-50 text-emerald-600"
-              }`}
+                }`}
             >
               {doorState === "locked" ? (
                 <DoorClosed className="w-6 h-6" />
@@ -73,7 +91,7 @@ export default function DoorStatusPage() {
         <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Device Status</p>
+              <p className="text-sm text-slate-500">Wireless Status</p>
               <p className="text-2xl font-bold text-slate-800 mt-1">
                 {deviceStatus === "online" ? "Online" : "Offline"}
               </p>
@@ -93,7 +111,7 @@ export default function DoorStatusPage() {
                 {lastAction.action}
               </p>
               <p className="text-xs text-slate-500">
-                {lastAction.by}
+                {lastAction.time}
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -112,11 +130,10 @@ export default function DoorStatusPage() {
         <button
           onClick={toggleDoor}
           className={`px-6 py-3 rounded-xl font-semibold text-white transition
-          ${
-            doorState === "locked"
+          ${doorState === "locked"
               ? "bg-emerald-600 hover:bg-emerald-700"
               : "bg-red-600 hover:bg-red-700"
-          }`}
+            }`}
         >
           {doorState === "locked" ? "Open Door" : "Close Door"}
         </button>
