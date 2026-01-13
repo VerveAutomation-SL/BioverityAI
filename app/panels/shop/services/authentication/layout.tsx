@@ -33,6 +33,9 @@ export default function AuthenticationLayout({
   const [openEmployees, setOpenEmployees] = useState(
     pathname.startsWith("/panels/shop/services/authentication/employees")
   );
+  const [openSchedule, setOpenSchedule] = useState(
+    pathname.startsWith("/panels/shop/services/authentication/schedule")
+  );
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -244,20 +247,68 @@ export default function AuthenticationLayout({
             </div>
           </div>
 
-          {/* Schedule */}
-          <button
-            onClick={() =>
-              router.push("/panels/shop/services/authentication/schedule")
-            }
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all duration-200
-              ${pathname === "/panels/shop/services/authentication/schedule"
-                ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-200 scale-105"
-                : "text-slate-700 hover:bg-slate-100 hover:scale-105"
-              }`}
-          >
-            <CalendarDays className="w-5 h-5" />
-            <span>Schedule</span>
-          </button>
+          {/* Schedule Dropdown */}
+          <div className="space-y-1">
+            <button
+              onClick={() => setOpenSchedule(!openSchedule)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-semibold transition-all duration-200
+      ${pathname.startsWith("/panels/shop/services/authentication/schedule")
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "text-slate-700 hover:bg-slate-100"
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <CalendarDays className="w-5 h-5" />
+                <span>Schedule</span>
+              </div>
+              <ChevronDown
+                className={`w-4 h-4 transition-transform duration-300 ${openSchedule ? "rotate-180" : ""
+                  }`}
+              />
+            </button>
+
+            {/* Dropdown Items */}
+            <div
+              className={`ml-4 pl-4 border-l-2 border-emerald-200 space-y-1 overflow-hidden transition-all duration-300
+      ${openSchedule ? "max-h-40 opacity-100" : "max-h-0 opacity-0"}
+    `}
+            >
+              {/* Automatic */}
+              <button
+                onClick={() =>
+                  router.push(
+                    "/panels/shop/services/authentication/schedule/biometric"
+                  )
+                }
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200
+        ${pathname ===
+                    "/panels/shop/services/authentication/schedule/automatic"
+                    ? "bg-emerald-100 text-emerald-700 font-semibold shadow-sm"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+              >
+                <span className="text-sm">Biometric Schedule</span>
+              </button>
+
+              {/* Manual */}
+              <button
+                onClick={() =>
+                  router.push(
+                    "/panels/shop/services/authentication/schedule/manual"
+                  )
+                }
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200
+        ${pathname ===
+                    "/panels/shop/services/authentication/schedule/manual"
+                    ? "bg-emerald-100 text-emerald-700 font-semibold shadow-sm"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+              >
+                <span className="text-sm">Manual Schedule</span>
+              </button>
+            </div>
+          </div>
+
         </nav>
 
         {/* Go Back Button */}

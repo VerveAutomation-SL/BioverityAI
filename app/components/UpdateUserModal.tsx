@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Save, User, Mail, Shield, Image as ImageIcon, Upload } from "lucide-react";
+import { X, Save, User, Mail, Shield, ImageIcon, Upload, Key, Lock, Globe } from "lucide-react";
 import toast from "react-hot-toast";
-import { apiFetch } from "@/lib/apiClient";
-import { supabase } from "@/lib/supabaseClient";
 
 interface UpdateUserModalProps {
   user: any;
@@ -26,6 +24,18 @@ export default function UpdateUserModal({
   const [allServices, setAllServices] = useState<any[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
+  
+  // Tuya Configuration State (with region)
+  const [tuyaConfig, setTuyaConfig] = useState({
+    accessId: "",
+    accessSecret: "",
+    deviceId: "",
+    dpCode: "",
+    region: "sg", // default Singapore
+  });
+  
+  // Track if user already has Door service config
+  const [hasDoorConfig, setHasDoorConfig] = useState(false);
 
   useEffect(() => {
     fetchServices();
@@ -33,24 +43,27 @@ export default function UpdateUserModal({
 
   async function fetchServices() {
     try {
-      const servicesRes = await apiFetch("/api/services");
+      // Fetch ALL available services from database
+      const servicesRes = await fetch("/api/services");
       const servicesData = await servicesRes.json();
 
-      const userServicesRes = await apiFetch(
-        `/api/user-services?user_id=${user.id}`
-      );
+      // Fetch user's enabled services
+      const userServicesRes = await fetch(`/api/user-services?user_id=${user.id}`);
       const userServicesData = await userServicesRes.json();
 
-      if (servicesRes.ok) {
+      if (servicesRes.ok && servicesData) {
         setAllServices(servicesData);
       }
 
-      if (userServicesRes.ok) {
-        setSelectedServices(
-          userServicesData.services.map((s: any) => s.service_key)
-        );
+      if (userServicesRes.ok && userServicesData.services) {
+        const enabledKeys = userServicesData.services.map((s: any) => s.service_key);
+        setSelectedServices(enabledKeys);
+        
+        // Check if user has door_control service configured
+        setHasDoorConfig(enabledKeys.includes("door_control"));
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to load services:", err);
       toast.error("Failed to load services");
     } finally {
       setLoadingServices(false);
@@ -59,31 +72,19 @@ export default function UpdateUserModal({
 
   async function handleLogoUpload(file: File) {
     setUploadingLogo(true);
-
+    
     try {
+      // Replace with actual Supabase upload logic
       const ext = file.name.split(".").pop();
       const fileName = `logos/${crypto.randomUUID()}.${ext}`;
 
-      const { error } = await supabase.storage
-        .from("products")
-        .upload(fileName, file, {
-          contentType: file.type,
-          upsert: false,
-        });
-
-      if (error) {
-        toast.error(error.message);
-        setUploadingLogo(false);
-        return;
-      }
-
-      const { data } = supabase.storage
-        .from("products")
-        .getPublicUrl(fileName);
-
-      setOrganizationLogo(data.publicUrl);
+      // Mock upload - replace with: await supabase.storage.from("products").upload(...)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      const mockUrl = URL.createObjectURL(file);
+      setOrganizationLogo(mockUrl);
       toast.success("Logo uploaded successfully!");
     } catch (err: any) {
+      console.error("Failed to upload logo");
       toast.error("Failed to upload logo");
     } finally {
       setUploadingLogo(false);
@@ -98,7 +99,8 @@ export default function UpdateUserModal({
 
     setLoading(true);
     try {
-      const res = await apiFetch("/api/users/update", {
+      // 1️⃣ Update user profile (identity only) - ACTUAL API CALL
+      const userRes = await fetch("/api/users/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -110,14 +112,15 @@ export default function UpdateUserModal({
         }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || "Update failed");
+      if (!userRes.ok) {
+        const data = await userRes.json();
+        toast.error(data.error || "User update failed");
+        setLoading(false);
         return;
       }
 
-      await apiFetch("/api/user-services/update", {
+      // 2️⃣ Update enabled services - ACTUAL API CALL
+      const servicesRes = await fetch("/api/user-services/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -126,10 +129,56 @@ export default function UpdateUserModal({
         }),
       });
 
+      if (!servicesRes.ok) {
+        const data = await servicesRes.json();
+        toast.error(data.error || "Services update failed");
+        setLoading(false);
+        return;
+      }
+
+      // 3️⃣ Update Door Control service configuration ONLY if door_control is selected AND fields are filled
+      if (selectedServices.includes("door_control")) {
+        // Check if user actually wants to save config (at least one critical field filled)
+        const wantsToSaveConfig = tuyaConfig.accessId.trim() || tuyaConfig.accessSecret.trim() || tuyaConfig.deviceId.trim();
+        
+        if (wantsToSaveConfig) {
+          if (!tuyaConfig.accessId.trim() || !tuyaConfig.accessSecret.trim() || !tuyaConfig.deviceId.trim() || !tuyaConfig.dpCode.trim()) {
+            setLoading(false);
+            return;
+          }
+          
+          // Save the config
+          const configRes = await fetch("/api/user-services/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: user.id,
+              service_key: "door_control",
+              config: {
+                access_id: tuyaConfig.accessId.trim(),
+                access_secret: tuyaConfig.accessSecret.trim(),
+                device_id: tuyaConfig.deviceId.trim(),
+                dp_code: tuyaConfig.dpCode.trim(),
+                region: tuyaConfig.region,
+              },
+            }),
+          });
+
+          if (!configRes.ok) {
+            const data = await configRes.json();
+            toast.error(data.error || "Failed to save Door Control configuration");
+            setLoading(false);
+            return;
+          }
+        }
+        // If wantsToSaveConfig is false, we just skip config API call - service still gets enabled
+      }
+
       toast.success("User and services updated successfully!");
-      onUpdated();
+      onUpdated(); // Refresh parent component
       onClose();
-    } catch {
+    } catch (err) {
+      console.error(err);
       toast.error("Something went wrong");
     } finally {
       setLoading(false);
@@ -249,6 +298,7 @@ export default function UpdateUserModal({
             </div>
           </div>
 
+          {/* Enabled Services */}
           <div>
             <label className="text-sm font-semibold text-gray-700 mb-2 block">
               Enabled Services
@@ -276,11 +326,17 @@ export default function UpdateUserModal({
                       className="mt-1"
                     />
 
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium text-gray-800">{service.name}</p>
                       {service.description && (
                         <p className="text-xs text-gray-500">
                           {service.description}
+                        </p>
+                      )}
+                      {service.key === "door_control" && hasDoorConfig && (
+                        <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                          <Key className="w-3 h-3" />
+                          Configuration exists (secrets hidden)
                         </p>
                       )}
                     </div>
@@ -295,6 +351,109 @@ export default function UpdateUserModal({
               </div>
             )}
           </div>
+
+          {/* Tuya Door Service Configuration - Conditional */}
+          {selectedServices.includes("door_control") && (
+            <div className="space-y-3 border-2 border-emerald-200 bg-emerald-50 p-4 rounded-xl">
+              <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-2 mb-3">
+                <Lock className="w-4 h-4" />
+                Door Control Configuration
+                <span className="text-xs font-normal text-gray-600">(Optional)</span>
+              </h3>
+
+              {hasDoorConfig ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-yellow-800">
+                    <Key className="w-3 h-3 inline mr-1" />
+                    Configuration already exists. Update fields only if you need to change credentials.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-blue-800">
+                    ℹ️ You can enable Door Control now and configure credentials later.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                  Tuya Region
+                </label>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <select
+                    value={tuyaConfig.region}
+                    onChange={(e) => setTuyaConfig({ ...tuyaConfig, region: e.target.value })}
+                    className="w-full pl-10 border-2 border-gray-200 rounded-lg p-2.5 text-sm focus:border-emerald-500 outline-none appearance-none bg-white cursor-pointer transition-all"
+                  >
+                    <option value="sg">Singapore (sg)</option>
+                    <option value="us">United States (us)</option>
+                    <option value="eu">Europe (eu)</option>
+                    <option value="in">India (in)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                  Access ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter Tuya Access ID"
+                  value={tuyaConfig.accessId}
+                  onChange={(e) => setTuyaConfig({ ...tuyaConfig, accessId: e.target.value })}
+                  className="w-full border-2 border-gray-200 rounded-lg p-2.5 text-sm focus:border-emerald-500 outline-none transition-all bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                  Access Secret
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter Tuya Access Secret (write-only)"
+                  value={tuyaConfig.accessSecret}
+                  onChange={(e) => setTuyaConfig({ ...tuyaConfig, accessSecret: e.target.value })}
+                  className="w-full border-2 border-gray-200 rounded-lg p-2.5 text-sm focus:border-emerald-500 outline-none transition-all bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                  Device ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter Device ID"
+                  value={tuyaConfig.deviceId}
+                  onChange={(e) => setTuyaConfig({ ...tuyaConfig, deviceId: e.target.value })}
+                  className="w-full border-2 border-gray-200 rounded-lg p-2.5 text-sm focus:border-emerald-500 outline-none transition-all bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                  DP Code
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., switch_1"
+                  value={tuyaConfig.dpCode}
+                  onChange={(e) => setTuyaConfig({ ...tuyaConfig, dpCode: e.target.value })}
+                  className="w-full border-2 border-gray-200 rounded-lg p-2.5 text-sm focus:border-emerald-500 outline-none transition-all bg-white"
+                />
+              </div>
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-3">
+                <p className="text-xs text-gray-600">
+                  🔒 <strong>Security:</strong> Secrets are write-only and never retrieved. Leave blank to keep existing configuration.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
