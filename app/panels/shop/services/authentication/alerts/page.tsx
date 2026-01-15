@@ -1,19 +1,52 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, Send, Check, Bell, Sparkles } from "lucide-react";
+import { MessageCircle, Check, Bell } from "lucide-react";
 
-type AlertChannel = "whatsapp" | "telegram" | null;
+type FormData = {
+  name: string;
+  phoneNumber: string;
+};
 
 export default function AlertsPage() {
-  const [selectedChannel, setSelectedChannel] = useState<AlertChannel>(null);
+  const [formData, setFormData] = useState<FormData>({
+    name: "",
+    phoneNumber: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  function selectChannel(channel: AlertChannel) {
-    setSelectedChannel(channel);
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   }
 
+  async function handleSubmit() {
+    if (!isFormValid || isSubmitting) return;
+    
+    setIsSubmitting(true);
+
+    // Simulate API call - replace with actual database save later
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    setIsSubmitting(false);
+    setShowSuccess(true);
+
+    // Reset form after 3 seconds
+    setTimeout(() => {
+      setShowSuccess(false);
+      setFormData({ name: "", phoneNumber: "" });
+    }, 3000);
+  }
+
+  const isFormValid = formData.name.trim() !== "" && formData.phoneNumber.trim() !== "";
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 flex flex-col items-center">
+      <div className="w-full max-w-4xl">
       {/* Hero Section */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-3">
@@ -32,166 +65,130 @@ export default function AlertsPage() {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 mb-8 max-w-3xl">
+      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-5 mb-8">
         <div className="flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <MessageCircle className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
           <div>
-            <h3 className="font-semibold text-blue-900 mb-1">Stay Connected</h3>
-            <p className="text-sm text-blue-700">
-              Get instant notifications when employees check in or out, helping you monitor attendance in real-time.
+            <h3 className="font-semibold text-emerald-900 mb-1">WhatsApp Notifications</h3>
+            <p className="text-sm text-emerald-700">
+              Add your contact details to receive instant WhatsApp alerts for employee check-ins and check-outs.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Channel Selection Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
-        {/* WhatsApp Card */}
-        <div
-          onClick={() => selectChannel("whatsapp")}
-          className={`relative cursor-pointer rounded-3xl border-2 p-8 transition-all duration-300 transform hover:-translate-y-1
-            ${
-              selectedChannel === "whatsapp"
-                ? "border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-2xl shadow-emerald-200 scale-105"
-                : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-xl"
-            }`}
-        >
-          {/* Selection Badge */}
-          {selectedChannel === "whatsapp" && (
-            <div className="absolute top-4 right-4 w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center shadow-lg animate-pulse">
-              <Check className="w-5 h-5 text-white" />
+      {/* Success Message */}
+      {showSuccess && (
+        <div className="mb-8 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-2xl p-5 animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+              <Check className="w-6 h-6 text-white" />
             </div>
-          )}
-
-          {/* Icon & Content */}
-          <div className="flex flex-col items-center text-center">
-            <div
-              className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-5 transition-all duration-300 shadow-lg
-                ${
-                  selectedChannel === "whatsapp"
-                    ? "bg-gradient-to-br from-emerald-500 to-green-600 scale-110"
-                    : "bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600"
-                }`}
-            >
-              <MessageCircle className={`w-10 h-10 ${selectedChannel === "whatsapp" ? "text-white" : ""}`} />
-            </div>
-
-            <h3 className="text-2xl font-bold text-slate-800 mb-2">
-              WhatsApp
-            </h3>
-            <p className="text-slate-600 mb-4">
-              Receive instant alerts directly to your WhatsApp messenger
-            </p>
-
-            {/* Features List */}
-            <div className="space-y-2 text-sm text-left w-full">
-              <div className="flex items-center gap-2 text-slate-600">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                <span>Real-time notifications</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-600">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                <span>Rich media support</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-600">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                <span>Quick response options</span>
-              </div>
+            <div>
+              <h3 className="font-bold text-green-900">Successfully Saved!</h3>
+              <p className="text-sm text-green-700">Your WhatsApp alert settings have been updated.</p>
             </div>
           </div>
-
-          {/* Active Status */}
-          {selectedChannel === "whatsapp" && (
-            <div className="mt-6 pt-6 border-t border-emerald-200">
-              <div className="flex items-center justify-center gap-2 text-emerald-700 font-semibold">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                Active Channel
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Telegram Card */}
-        <div
-          onClick={() => selectChannel("telegram")}
-          className={`relative cursor-pointer rounded-3xl border-2 p-8 transition-all duration-300 transform hover:-translate-y-1
-            ${
-              selectedChannel === "telegram"
-                ? "border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-2xl shadow-emerald-200 scale-105"
-                : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-xl"
-            }`}
-        >
-          {/* Selection Badge */}
-          {selectedChannel === "telegram" && (
-            <div className="absolute top-4 right-4 w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center shadow-lg animate-pulse">
-              <Check className="w-5 h-5 text-white" />
-            </div>
-          )}
-
-          {/* Icon & Content */}
-          <div className="flex flex-col items-center text-center">
-            <div
-              className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-5 transition-all duration-300 shadow-lg
-                ${
-                  selectedChannel === "telegram"
-                    ? "bg-gradient-to-br from-blue-500 to-sky-600 scale-110"
-                    : "bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600"
-                }`}
-            >
-              <Send className={`w-10 h-10 ${selectedChannel === "telegram" ? "text-white" : ""}`} />
-            </div>
-
-            <h3 className="text-2xl font-bold text-slate-800 mb-2">
-              Telegram
-            </h3>
-            <p className="text-slate-600 mb-4">
-              Get alerts through secure Telegram bot notifications
-            </p>
-
-            {/* Features List */}
-            <div className="space-y-2 text-sm text-left w-full">
-              <div className="flex items-center gap-2 text-slate-600">
-                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                <span>Instant delivery</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-600">
-                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                <span>Group notifications</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-600">
-                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                <span>Secure messaging</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Active Status */}
-          {selectedChannel === "telegram" && (
-            <div className="mt-6 pt-6 border-t border-emerald-200">
-              <div className="flex items-center justify-center gap-2 text-emerald-700 font-semibold">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                Active Channel
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Save Button */}
-      {selectedChannel && (
-        <div className="mt-8 max-w-3xl">
-          <button className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-            Save Alert Preferences
-          </button>
         </div>
       )}
 
+      {/* Form Card */}
+      <div className="bg-white border-2 border-slate-200 rounded-3xl p-8 shadow-xl">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+            <MessageCircle className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Contact Information</h2>
+            <p className="text-sm text-slate-500">Enter details for WhatsApp notifications</p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {/* Name Input */}
+          <div>
+            <label htmlFor="name" className="block text-sm font-semibold text-slate-700 mb-2">
+              Full Name
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              placeholder="Enter your full name"
+              className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:bg-white transition-all duration-200 text-slate-800 placeholder-slate-400"
+            />
+          </div>
+
+          {/* Phone Number Input */}
+          <div>
+            <label htmlFor="phoneNumber" className="block text-sm font-semibold text-slate-700 mb-2">
+              WhatsApp Number
+            </label>
+            <input
+              type="tel"
+              id="phoneNumber"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleInputChange}
+              placeholder="+1 234 567 8900"
+              className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:bg-white transition-all duration-200 text-slate-800 placeholder-slate-400"
+            />
+            <p className="mt-2 text-xs text-slate-500">Include country code (e.g., +1 for US, +44 for UK)</p>
+          </div>
+
+          {/* Feature List */}
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-5">
+            <h4 className="text-sm font-semibold text-slate-700 mb-3">You'll receive alerts for:</h4>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                <span>Employee check-in notifications</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                <span>Employee check-out notifications</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                <span>Real-time attendance updates</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            onClick={handleSubmit}
+            disabled={!isFormValid || isSubmitting}
+            className={`w-full py-4 rounded-2xl font-semibold text-white shadow-lg transition-all duration-300 transform
+              ${
+                isFormValid && !isSubmitting
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-xl hover:scale-105 cursor-pointer"
+                  : "bg-slate-300 cursor-not-allowed"
+              }`}
+          >
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Saving...
+              </span>
+            ) : (
+              "Save Alert Settings"
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* Help Section */}
-      <div className="mt-12 max-w-3xl bg-slate-50 border border-slate-200 rounded-2xl p-6">
-        <h3 className="font-semibold text-slate-800 mb-3">Need Help?</h3>
-        <p className="text-sm text-slate-600 leading-relaxed">
-          Having trouble setting up alerts? Contact our support team.
-        </p>
+      <div className="mt-8 bg-slate-50 border border-slate-200 rounded-2xl p-6">
+        <h3 className="font-semibold text-slate-800 mb-3">Important Information</h3>
+        <div className="space-y-2 text-sm text-slate-600 leading-relaxed">
+          <p>• Make sure your WhatsApp number is active and can receive messages</p>
+          <p>• You'll receive a verification message when you save your settings</p>
+          <p>• Update your contact details anytime by submitting this form again</p>
+        </div>
+      </div>
       </div>
     </div>
   );
