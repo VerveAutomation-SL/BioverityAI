@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { UserPlus, Upload, Plus, X } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 interface EmployeeRegistrationFormProps {
   orgId: string;
@@ -12,6 +13,7 @@ export default function EmployeeRegistrationForm({
   orgId,
   onSuccess,
 }: EmployeeRegistrationFormProps) {
+
   const [fullName, setFullName] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const [department, setDepartment] = useState("");
@@ -19,8 +21,8 @@ export default function EmployeeRegistrationForm({
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  
-  // Department management
+
+  // Department management - NEW
   const [departments, setDepartments] = useState<string[]>([
     "IT",
     "HR",
@@ -31,7 +33,7 @@ export default function EmployeeRegistrationForm({
   const [showAddDept, setShowAddDept] = useState(false);
   const [newDeptName, setNewDeptName] = useState("");
 
-  // Load custom departments from your backend
+  // Load custom departments - NEW
   useEffect(() => {
     loadDepartments();
   }, [orgId]);
@@ -50,20 +52,7 @@ export default function EmployeeRegistrationForm({
     }
   }
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setPhoto(file);
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setPhotoPreview(null);
-    }
-  };
-
+  // Add department handler - NEW
   async function handleAddDepartment() {
     if (!newDeptName.trim()) {
       alert("Please enter a department name");
@@ -101,21 +90,35 @@ export default function EmployeeRegistrationForm({
     }
   }
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setPhoto(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setPhotoPreview(null);
+    }
+  };
+
   async function uploadEmployeePhoto(file: File) {
     const fileExt = file.name.split(".").pop();
     const fileName = `employee-${Date.now()}.${fileExt}`;
 
-    // Using a placeholder - replace with your actual storage solution
-    const formData = new FormData();
-    formData.append("file", file);
-    
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
+    const { error } = await supabase.storage
+      .from("products")
+      .upload(fileName, file);
 
-    const data = await res.json();
-    return data.url;
+    if (error) throw error;
+
+    const { data } = supabase.storage
+      .from("products")
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
   }
 
   async function handleRegisterEmployee() {
@@ -156,10 +159,13 @@ export default function EmployeeRegistrationForm({
       }
 
       alert("Employee registered successfully!");
+      
+      // Reset form
       resetForm();
       if (onSuccess) {
         onSuccess();
       }
+      
       setLoading(false);
     } catch (error) {
       console.error("Registration error:", error);
@@ -269,6 +275,7 @@ export default function EmployeeRegistrationForm({
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Department *
               </label>
+              {/* MODIFIED SECTION - Added department management */}
               <div className="space-y-3">
                 <select
                   value={department}
@@ -331,6 +338,7 @@ export default function EmployeeRegistrationForm({
                   </div>
                 )}
               </div>
+              {/* END MODIFIED SECTION */}
             </div>
 
             <div>
