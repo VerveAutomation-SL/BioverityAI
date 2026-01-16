@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MessageCircle, Check, Bell } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 type FormData = {
   name: string;
@@ -15,6 +16,50 @@ export default function AlertsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch org_id on mount
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("org_id")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.org_id) {
+        setOrgId(profile.org_id);
+      }
+      setIsLoading(false);
+    })();
+  }, []);
+
+  // Auto-load saved data when orgId is available
+  useEffect(() => {
+    if (!orgId) return;
+
+    (async () => {
+      const { data } = await supabase
+        .from("alert_recipients")
+        .select("name, phone_number")
+        .eq("org_id", orgId)
+        .single();
+
+      if (data) {
+        setFormData({
+          name: data.name,
+          phoneNumber: data.phone_number,
+        });
+      }
+    })();
+  }, [orgId]);
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
@@ -25,24 +70,47 @@ export default function AlertsPage() {
   }
 
   async function handleSubmit() {
-    if (!isFormValid || isSubmitting) return;
-    
+    if (!isFormValid || isSubmitting || !orgId) return;
+
     setIsSubmitting(true);
 
-    // Simulate API call - replace with actual database save later
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error } = await supabase
+      .from("alert_recipients")
+      .upsert({
+        org_id: orgId,
+        name: formData.name.trim(),
+        phone_number: formData.phoneNumber.trim(),
+        created_by: user?.id ?? null,
+      });
 
     setIsSubmitting(false);
+
+    if (error) {
+      console.error("Save failed:", error);
+      return;
+    }
+
     setShowSuccess(true);
 
-    // Reset form after 3 seconds
     setTimeout(() => {
       setShowSuccess(false);
-      setFormData({ name: "", phoneNumber: "" });
     }, 3000);
   }
 
   const isFormValid = formData.name.trim() !== "" && formData.phoneNumber.trim() !== "";
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 flex flex-col items-center">
@@ -60,7 +128,7 @@ export default function AlertsPage() {
           </div>
         </div>
         <p className="text-slate-600 text-lg ml-15">
-          Configure how you want to receive real-time authentication notifications
+          Configure who will receive real-time alerts and notifications
         </p>
       </div>
 
@@ -160,10 +228,10 @@ export default function AlertsPage() {
           {/* Submit Button */}
           <button
             onClick={handleSubmit}
-            disabled={!isFormValid || isSubmitting}
+            disabled={!isFormValid || isSubmitting || !orgId}
             className={`w-full py-4 rounded-2xl font-semibold text-white shadow-lg transition-all duration-300 transform
               ${
-                isFormValid && !isSubmitting
+                isFormValid && !isSubmitting && orgId
                   ? "bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-xl hover:scale-105 cursor-pointer"
                   : "bg-slate-300 cursor-not-allowed"
               }`}

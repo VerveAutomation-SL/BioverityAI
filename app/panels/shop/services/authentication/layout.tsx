@@ -342,7 +342,7 @@ export default function AuthenticationLayout({
         <div className="w-full p-4 border-t border-slate-200 bg-slate-50">
           <div className="text-xs text-slate-500 text-center">
             <p className="font-medium">Version 1.0.0</p>
-            <p className="mt-1">© 2024 Attendance System</p>
+            <p className="mt-1">© 2024 BioverityAI.com</p>
           </div>
         </div>
       </aside>

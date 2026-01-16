@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { UserPlus, Upload } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
+import { useState, useEffect } from "react";
+import { UserPlus, Upload, Plus, X } from "lucide-react";
 
 interface EmployeeRegistrationFormProps {
   orgId: string;
@@ -13,7 +12,6 @@ export default function EmployeeRegistrationForm({
   orgId,
   onSuccess,
 }: EmployeeRegistrationFormProps) {
-
   const [fullName, setFullName] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const [department, setDepartment] = useState("");
@@ -21,6 +19,36 @@ export default function EmployeeRegistrationForm({
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // Department management
+  const [departments, setDepartments] = useState<string[]>([
+    "IT",
+    "HR",
+    "Sales",
+    "Marketing",
+    "Finance"
+  ]);
+  const [showAddDept, setShowAddDept] = useState(false);
+  const [newDeptName, setNewDeptName] = useState("");
+
+  // Load custom departments from your backend
+  useEffect(() => {
+    loadDepartments();
+  }, [orgId]);
+
+  async function loadDepartments() {
+    try {
+      const res = await fetch(`/api/departments?org_id=${orgId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.departments && data.departments.length > 0) {
+          setDepartments(data.departments);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load departments:", error);
+    }
+  }
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -36,21 +64,58 @@ export default function EmployeeRegistrationForm({
     }
   };
 
+  async function handleAddDepartment() {
+    if (!newDeptName.trim()) {
+      alert("Please enter a department name");
+      return;
+    }
+
+    if (departments.includes(newDeptName.trim())) {
+      alert("This department already exists");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/departments/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          org_id: orgId,
+          name: newDeptName.trim(),
+        }),
+      });
+
+      if (res.ok) {
+        const updatedDepts = [...departments, newDeptName.trim()];
+        setDepartments(updatedDepts);
+        setDepartment(newDeptName.trim());
+        setNewDeptName("");
+        setShowAddDept(false);
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to add department");
+      }
+    } catch (error) {
+      console.error("Failed to add department:", error);
+      alert("Failed to add department");
+    }
+  }
+
   async function uploadEmployeePhoto(file: File) {
     const fileExt = file.name.split(".").pop();
     const fileName = `employee-${Date.now()}.${fileExt}`;
 
-    const { error } = await supabase.storage
-      .from("products")
-      .upload(fileName, file);
+    // Using a placeholder - replace with your actual storage solution
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
 
-    if (error) throw error;
-
-    const { data } = supabase.storage
-      .from("products")
-      .getPublicUrl(fileName);
-
-    return data.publicUrl;
+    const data = await res.json();
+    return data.url;
   }
 
   async function handleRegisterEmployee() {
@@ -91,13 +156,10 @@ export default function EmployeeRegistrationForm({
       }
 
       alert("Employee registered successfully!");
-      
-      // Reset form
       resetForm();
       if (onSuccess) {
         onSuccess();
       }
-      
       setLoading(false);
     } catch (error) {
       console.error("Registration error:", error);
@@ -207,18 +269,68 @@ export default function EmployeeRegistrationForm({
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Department *
               </label>
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-emerald-500 focus:outline-none transition-colors"
-              >
-                <option value="">Select Department</option>
-                <option value="IT">IT</option>
-                <option value="HR">HR</option>
-                <option value="Sales">Sales</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Finance">Finance</option>
-              </select>
+              <div className="space-y-3">
+                <select
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-emerald-500 focus:outline-none transition-colors"
+                  size={1}
+                  style={{
+                    maxHeight: departments.length > 6 ? '300px' : 'auto',
+                    overflowY: departments.length > 6 ? 'auto' : 'visible'
+                  }}
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+
+                {!showAddDept ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddDept(true)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-slate-300 rounded-xl text-sm font-semibold text-slate-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add New Department
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newDeptName}
+                      onChange={(e) => setNewDeptName(e.target.value)}
+                      placeholder="Department name"
+                      className="flex-1 border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-emerald-500 focus:outline-none"
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddDepartment();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddDepartment}
+                      className="px-3 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddDept(false);
+                        setNewDeptName("");
+                      }}
+                      className="px-3 py-2 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>

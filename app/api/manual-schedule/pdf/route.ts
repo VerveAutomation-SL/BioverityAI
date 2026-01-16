@@ -15,7 +15,24 @@ export async function GET(req: Request) {
       );
     }
 
-    /* 1️⃣ Fetch schedules */
+    /* =====================================================
+       1️⃣ Fetch organization name + logo (SAFE)
+    ===================================================== */
+    const { data: orgRows, error: orgErr } = await supabase
+      .from("profiles")
+      .select("full_name, organization_logo")
+      .eq("org_id", org_id)
+      .limit(1);
+
+    if (orgErr || !orgRows || orgRows.length === 0) {
+      throw orgErr;
+    }
+
+    const org = orgRows[0];
+
+    /* =====================================================
+       2️⃣ Fetch schedules for the date
+    ===================================================== */
     const { data: schedules, error: schedErr } = await supabase
       .from("manual_schedules")
       .select("employee_id, email, start_time, end_time")
@@ -30,7 +47,9 @@ export async function GET(req: Request) {
       );
     }
 
-    /* 2️⃣ Fetch employees separately */
+    /* =====================================================
+       3️⃣ Fetch employees separately (CORRECT JOIN FIX)
+    ===================================================== */
     const employeeIds = schedules.map(s => s.employee_id);
 
     const { data: employees, error: empErr } = await supabase
@@ -42,12 +61,13 @@ export async function GET(req: Request) {
       throw empErr;
     }
 
-    /* 3️⃣ Map employees by id */
     const empMap = new Map(
       employees.map(emp => [emp.id, emp])
     );
 
-    /* 4️⃣ Create PDF */
+    /* =====================================================
+       4️⃣ Create PDF
+    ===================================================== */
     const pdf = await PDFDocument.create();
     const font = await pdf.embedFont(StandardFonts.Helvetica);
 
@@ -63,12 +83,45 @@ export async function GET(req: Request) {
       y -= 18;
     };
 
-    /* Header */
-    draw("Daily Attendance Report", 15);
+    /* =====================================================
+       5️⃣ Draw Logo (optional)
+    ===================================================== */
+    if (org.organization_logo && org.organization_logo.startsWith("http")) {
+      try {
+        const imgBytes = await fetch(org.organization_logo).then(r =>
+          r.arrayBuffer()
+        );
+
+        const logo = org.organization_logo.endsWith(".png")
+          ? await pdf.embedPng(imgBytes)
+          : await pdf.embedJpg(imgBytes);
+
+        const dims = logo.scale(0.25);
+
+        page.drawImage(logo, {
+          x: 50,
+          y: 780,
+          width: dims.width,
+          height: dims.height,
+        });
+
+        y = 760;
+      } catch {
+        // Logo failure should NEVER break PDF
+      }
+    }
+
+    /* =====================================================
+       6️⃣ Header
+    ===================================================== */
+    draw(org.full_name, 16);
+    draw("Daily Attendance Report", 14);
     draw(`Date: ${date}`, 12);
     draw("--------------------------------------------------");
 
-    /* Rows */
+    /* =====================================================
+       7️⃣ Attendance Rows
+    ===================================================== */
     for (const row of schedules) {
       const emp = empMap.get(row.employee_id);
       if (!emp) continue;
@@ -83,6 +136,9 @@ export async function GET(req: Request) {
       draw("--------------------------------------------------");
     }
 
+    /* =====================================================
+       8️⃣ Return PDF
+    ===================================================== */
     const pdfBytes = await pdf.save();
 
     return new NextResponse(pdfBytes as BodyInit, {
