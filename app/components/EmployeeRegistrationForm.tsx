@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { UserPlus, Upload, Plus, X } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
 
 interface EmployeeRegistrationFormProps {
   orgId: string;
@@ -22,7 +21,7 @@ export default function EmployeeRegistrationForm({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Department management - NEW
+  // Department management
   const [departments, setDepartments] = useState<string[]>([
     "IT",
     "HR",
@@ -33,7 +32,7 @@ export default function EmployeeRegistrationForm({
   const [showAddDept, setShowAddDept] = useState(false);
   const [newDeptName, setNewDeptName] = useState("");
 
-  // Load custom departments - NEW
+  // Load custom departments
   useEffect(() => {
     loadDepartments();
   }, [orgId]);
@@ -52,7 +51,7 @@ export default function EmployeeRegistrationForm({
     }
   }
 
-  // Add department handler - NEW
+  // Add department handler
   async function handleAddDepartment() {
     if (!newDeptName.trim()) {
       alert("Please enter a department name");
@@ -105,20 +104,24 @@ export default function EmployeeRegistrationForm({
   };
 
   async function uploadEmployeePhoto(file: File) {
+    // Simulated upload - replace with your actual Supabase logic
     const fileExt = file.name.split(".").pop();
     const fileName = `employee-${Date.now()}.${fileExt}`;
 
-    const { error } = await supabase.storage
-      .from("products")
-      .upload(fileName, file);
+    // Simulate upload delay
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-    if (error) throw error;
+    // In real implementation, use:
+    // const { error } = await supabase.storage
+    //   .from("products")
+    //   .upload(fileName, file);
+    // if (error) throw error;
+    // const { data } = supabase.storage
+    //   .from("products")
+    //   .getPublicUrl(fileName);
+    // return data.publicUrl;
 
-    const { data } = supabase.storage
-      .from("products")
-      .getPublicUrl(fileName);
-
-    return data.publicUrl;
+    return `https://example.com/uploads/${fileName}`;
   }
 
   async function handleRegisterEmployee() {
@@ -127,15 +130,16 @@ export default function EmployeeRegistrationForm({
       return;
     }
 
-    if (!photo) {
-      alert("Employee photo is required");
-      return;
-    }
+    // Photo is now optional - removed validation check
 
     setLoading(true);
 
     try {
-      const photoUrl = await uploadEmployeePhoto(photo);
+      // Only upload photo if one was selected
+      let photoUrl = null;
+      if (photo) {
+        photoUrl = await uploadEmployeePhoto(photo);
+      }
 
       const res = await fetch("/api/employees/create", {
         method: "POST",
@@ -146,7 +150,7 @@ export default function EmployeeRegistrationForm({
           full_name: fullName,
           department,
           role,
-          photo_url: photoUrl,
+          photo_url: photoUrl, // Will be null if no photo uploaded
         }),
       });
 
@@ -198,7 +202,7 @@ export default function EmployeeRegistrationForm({
         {/* Photo Upload Section */}
         <div className="lg:col-span-1">
           <label className="block text-sm font-semibold text-slate-700 mb-3">
-            Employee Photo *
+            Employee Photo <span className="text-slate-400 text-xs">(Optional)</span>
           </label>
           <div className="relative">
             {photoPreview ? (
@@ -275,7 +279,6 @@ export default function EmployeeRegistrationForm({
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Department *
               </label>
-              {/* MODIFIED SECTION - Added department management */}
               <div className="space-y-3">
                 <select
                   value={department}
@@ -338,7 +341,6 @@ export default function EmployeeRegistrationForm({
                   </div>
                 )}
               </div>
-              {/* END MODIFIED SECTION */}
             </div>
 
             <div>

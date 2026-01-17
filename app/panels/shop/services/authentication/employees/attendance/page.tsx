@@ -1,32 +1,187 @@
 "use client";
 
-import { CheckCircle2, XCircle, ClipboardCheck, Users, Calendar, TrendingUp, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, XCircle, ClipboardCheck, Users, Calendar, TrendingUp, Clock, Loader2, Settings } from "lucide-react";
+
+type AttendanceRow = {
+  employee_id: string;
+  name: string;
+  role: string;
+  photo: string;
+  status: "present" | "absent" | "not_arrived";
+  check_in: string | null;
+  check_out: string | null;
+};
+
+type Schedule = {
+  morning_start: string;
+  morning_end: string;
+  evening_start: string;
+  evening_end: string;
+};
 
 export default function AttendancePage() {
-  // Dummy data (replace with real data later)
-  const employees = [
-    {
-      id: "EMP-001",
-      name: "John Doe",
-      role: "Software Engineer",
-      photo:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
-      status: "present",
-      checkInTime: "09:15 AM",
-    },
-  ];
+  const router = useRouter();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [date, setDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
+
+  const [employees, setEmployees] = useState<AttendanceRow[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(false);
+
+  // Schedule state
+  const [schedule, setSchedule] = useState<Schedule>({
+    morning_start: "09:00",
+    morning_end: "12:00",
+    evening_start: "13:00",
+    evening_end: "17:00",
+  });
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+
+  // Fetch user profile and org_id
+  useEffect(() => {
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+
+      if (!user) return router.replace("/login");
+
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("org_id, role, full_name")
+        .eq("id", user.id)
+        .single();
+
+      if (!prof || prof.role !== "user") {
+        return router.replace("/login");
+      }
+
+      setProfile(prof);
+      setLoading(false);
+    })();
+  }, []);
+
+  // Fetch schedule when profile loads
+  useEffect(() => {
+    if (!profile?.org_id) return;
+
+    async function loadSchedule() {
+      setScheduleLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("work_schedules")
+          .select("morning_start, morning_end, evening_start, evening_end")
+          .eq("org_id", profile.org_id)
+          .maybeSingle();
+
+        if (data) {
+          setSchedule({
+            morning_start: data.morning_start || "09:00",
+            morning_end: data.morning_end || "12:00",
+            evening_start: data.evening_start || "13:00",
+            evening_end: data.evening_end || "17:00",
+          });
+        }
+
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error fetching schedule:", error);
+        }
+      } catch (err) {
+        console.error("Error fetching schedule:", err);
+      } finally {
+        setScheduleLoading(false);
+      }
+    }
+
+    loadSchedule();
+  }, [profile?.org_id]);
+
+  // Fetch attendance data when profile or date change
+  useEffect(() => {
+    if (!profile?.org_id) return;
+
+    async function loadAttendance() {
+      setEmployeesLoading(true);
+
+      try {
+        // Get the current session token
+        const { data: { session } } = await supabase.auth.getSession();
+
+        const res = await fetch(
+          `/api/attendance/by-date?date=${date}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${session?.access_token}`
+            }
+          }
+        );
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          console.error("Attendance API error:", errorData);
+          throw new Error(errorData.error || "Failed to fetch attendance");
+        }
+
+        const data = await res.json();
+        setEmployees(data.data || []);
+      } catch (err) {
+        console.error("Error fetching attendance:", err);
+      } finally {
+        setEmployeesLoading(false);
+      }
+    }
+
+    loadAttendance();
+  }, [profile?.org_id, date]);
+
+  // Save schedule
+  const saveSchedule = async () => {
+    if (!profile?.org_id) return;
+
+    setScheduleSaving(true);
+    try {
+      const { error } = await supabase
+        .from("work_schedules")
+        .upsert({
+          org_id: profile.org_id,
+          morning_start: schedule.morning_start,
+          morning_end: schedule.morning_end,
+          evening_start: schedule.evening_start,
+          evening_end: schedule.evening_end,
+        }, {
+          onConflict: "org_id"
+        });
+
+      if (error) throw error;
+
+      alert("Schedule saved successfully!");
+    } catch (err) {
+      console.error("Error saving schedule:", err);
+      alert("Failed to save schedule");
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
 
   const presentCount = employees.filter(e => e.status === "present").length;
   const absentCount = employees.filter(e => e.status === "absent").length;
+  const notArrivedCount = employees.filter(e => e.status === "not_arrived").length;
   const totalCount = employees.length;
-  const attendanceRate = totalCount > 0 ? ((presentCount / totalCount) * 100).toFixed(0) : 0;
+  const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
 
-  const today = new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
+  if (loading || !profile) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -42,11 +197,130 @@ export default function AttendancePage() {
             </h1>
           </div>
         </div>
-        <div className="flex items-center gap-2 ml-15">
+        <div className="flex items-center gap-3 ml-15">
           <Calendar className="w-5 h-5 text-slate-500" />
-          <p className="text-slate-600 text-lg">
-            {today}
-          </p>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+      </div>
+
+      {/* Working Hours Section */}
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden">
+        <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <Settings className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-800">
+              Organization Working Hours
+            </h3>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {scheduleLoading ? (
+            <div className="py-8 text-center">
+              <Loader2 className="w-6 h-6 animate-spin text-slate-400 mx-auto" />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Morning Start */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Morning Start
+                  </label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="time"
+                      value={schedule.morning_start}
+                      onChange={(e) =>
+                        setSchedule({ ...schedule, morning_start: e.target.value })
+                      }
+                      className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Morning End */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Morning End
+                  </label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="time"
+                      value={schedule.morning_end}
+                      onChange={(e) =>
+                        setSchedule({ ...schedule, morning_end: e.target.value })
+                      }
+                      className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Evening Start */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Evening Start
+                  </label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="time"
+                      value={schedule.evening_start}
+                      onChange={(e) =>
+                        setSchedule({ ...schedule, evening_start: e.target.value })
+                      }
+                      className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Evening End */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Evening End
+                  </label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="time"
+                      value={schedule.evening_end}
+                      onChange={(e) =>
+                        setSchedule({ ...schedule, evening_end: e.target.value })
+                      }
+                      className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={saveSchedule}
+                disabled={scheduleSaving}
+                className="mt-6 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-emerald-700 hover:to-teal-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {scheduleSaving ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Settings className="w-5 h-5" />
+                    Save Schedule
+                  </>
+                )}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -118,7 +392,14 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        {employees.length === 0 ? (
+        {employeesLoading ? (
+          <div className="p-16 text-center">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Loader2 className="w-10 h-10 text-slate-400 animate-spin" />
+            </div>
+            <p className="text-lg font-semibold text-slate-600">Loading attendance...</p>
+          </div>
+        ) : employees.length === 0 ? (
           <div className="p-16 text-center">
             <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Users className="w-10 h-10 text-slate-400" />
@@ -143,7 +424,7 @@ export default function AttendancePage() {
               <tbody>
                 {employees.map((emp) => (
                   <tr
-                    key={emp.id}
+                    key={emp.employee_id}
                     className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
                   >
                     {/* Employee Info */}
@@ -168,11 +449,11 @@ export default function AttendancePage() {
                           <p className="text-sm text-slate-500">
                             {emp.role}
                           </p>
-                          {emp.status === "present" && emp.checkInTime && (
+                          {emp.status === "present" && emp.check_in && (
                             <div className="flex items-center gap-1 mt-1">
                               <Clock className="w-3 h-3 text-emerald-600" />
                               <p className="text-xs text-emerald-600 font-semibold">
-                                Check-in: {emp.checkInTime}
+                                Check-in: {new Date(emp.check_in).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </p>
                             </div>
                           )}
@@ -182,15 +463,22 @@ export default function AttendancePage() {
 
                     {/* Attendance Status */}
                     <td className="p-5 text-center">
-                      {emp.status === "present" ? (
+                      {emp.status === "present" && (
                         <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 rounded-full font-semibold shadow-sm border border-emerald-200">
                           <CheckCircle2 className="w-5 h-5" />
                           Present
                         </span>
-                      ) : (
+                      )}
+                      {emp.status === "absent" && (
                         <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-100 to-rose-100 text-red-700 rounded-full font-semibold shadow-sm border border-red-200">
                           <XCircle className="w-5 h-5" />
                           Absent
+                        </span>
+                      )}
+                      {emp.status === "not_arrived" && (
+                        <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700 rounded-full font-semibold shadow-sm border border-yellow-200">
+                          <Clock className="w-5 h-5" />
+                          Not Arrived
                         </span>
                       )}
                     </td>
@@ -202,11 +490,14 @@ export default function AttendancePage() {
         )}
 
         {/* Table Footer */}
-        {employees.length > 0 && (
+        {!employeesLoading && employees.length > 0 && (
           <div className="p-4 border-t border-slate-200 bg-slate-50 text-sm text-slate-600 text-center">
-            Showing {employees.length} employee{employees.length !== 1 ? 's' : ''} • 
-            <span className="text-emerald-600 font-semibold ml-1">{presentCount} Present</span> • 
+            Showing {employees.length} employee{employees.length !== 1 ? 's' : ''} •
+            <span className="text-emerald-600 font-semibold ml-1">{presentCount} Present</span> •
             <span className="text-red-600 font-semibold ml-1">{absentCount} Absent</span>
+            {notArrivedCount > 0 && (
+              <span className="text-yellow-600 font-semibold ml-1"> • {notArrivedCount} Not Arrived</span>
+            )}
           </div>
         )}
       </div>
