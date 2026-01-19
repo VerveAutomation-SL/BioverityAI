@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { UserPlus, Upload, Plus, X } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 interface EmployeeRegistrationFormProps {
   orgId: string;
@@ -21,7 +22,7 @@ export default function EmployeeRegistrationForm({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Department management
+  // Department management - NEW
   const [departments, setDepartments] = useState<string[]>([
     "IT",
     "HR",
@@ -32,7 +33,7 @@ export default function EmployeeRegistrationForm({
   const [showAddDept, setShowAddDept] = useState(false);
   const [newDeptName, setNewDeptName] = useState("");
 
-  // Load custom departments
+  // Load custom departments - NEW
   useEffect(() => {
     loadDepartments();
   }, [orgId]);
@@ -51,7 +52,7 @@ export default function EmployeeRegistrationForm({
     }
   }
 
-  // Add department handler
+  // Add department handler - NEW
   async function handleAddDepartment() {
     if (!newDeptName.trim()) {
       alert("Please enter a department name");
@@ -104,24 +105,20 @@ export default function EmployeeRegistrationForm({
   };
 
   async function uploadEmployeePhoto(file: File) {
-    // Simulated upload - replace with your actual Supabase logic
     const fileExt = file.name.split(".").pop();
     const fileName = `employee-${Date.now()}.${fileExt}`;
 
-    // Simulate upload delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const { error } = await supabase.storage
+      .from("products")
+      .upload(fileName, file);
 
-    // In real implementation, use:
-    // const { error } = await supabase.storage
-    //   .from("products")
-    //   .upload(fileName, file);
-    // if (error) throw error;
-    // const { data } = supabase.storage
-    //   .from("products")
-    //   .getPublicUrl(fileName);
-    // return data.publicUrl;
+    if (error) throw error;
 
-    return `https://example.com/uploads/${fileName}`;
+    const { data } = supabase.storage
+      .from("products")
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
   }
 
   async function handleRegisterEmployee() {
@@ -130,12 +127,9 @@ export default function EmployeeRegistrationForm({
       return;
     }
 
-    // Photo is now optional - removed validation check
-
     setLoading(true);
 
     try {
-      // Only upload photo if one was selected
       let photoUrl = null;
       if (photo) {
         photoUrl = await uploadEmployeePhoto(photo);
@@ -150,7 +144,7 @@ export default function EmployeeRegistrationForm({
           full_name: fullName,
           department,
           role,
-          photo_url: photoUrl, // Will be null if no photo uploaded
+          photo_url: photoUrl,
         }),
       });
 
@@ -279,6 +273,7 @@ export default function EmployeeRegistrationForm({
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Department *
               </label>
+              {/* MODIFIED SECTION - Added department management */}
               <div className="space-y-3">
                 <select
                   value={department}
@@ -341,6 +336,7 @@ export default function EmployeeRegistrationForm({
                   </div>
                 )}
               </div>
+              {/* END MODIFIED SECTION */}
             </div>
 
             <div>
