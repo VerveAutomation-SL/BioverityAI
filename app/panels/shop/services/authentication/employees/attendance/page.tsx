@@ -24,11 +24,20 @@ type Schedule = {
   evening_end: string;
 };
 
+// Helper function to format time in Singapore timezone
+const formatSGTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString("en-SG", {
+    timeZone: "Asia/Singapore",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
 export default function AttendancePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [currentTime, setCurrentTime] = useState("");
 
   const [date, setDate] = useState(
     new Date().toISOString().slice(0, 10)
@@ -45,6 +54,23 @@ export default function AttendancePage() {
   });
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
+
+  // Update current time in Singapore timezone
+  useEffect(() => {
+    const updateTime = () => {
+      setCurrentTime(
+        new Date().toLocaleTimeString("en-SG", {
+          timeZone: "Asia/Singapore",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -451,7 +477,7 @@ export default function AttendancePage() {
             <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
               <Clock className="w-4 h-4 text-slate-500" />
               <span className="text-sm font-semibold text-slate-700">
-                {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                {currentTime}
               </span>
             </div>
           </div>
@@ -519,7 +545,7 @@ export default function AttendancePage() {
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3 text-emerald-600" />
                                 <p className="text-xs text-emerald-600 font-semibold">
-                                  {new Date(emp.check_in).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                  {formatSGTime(emp.check_in)}
                                 </p>
                               </div>
                               {emp.is_late && (

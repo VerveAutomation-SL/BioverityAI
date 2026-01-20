@@ -2,6 +2,19 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
+// Singapore timezone formatters
+const formatSGTime = (date: Date) =>
+  date.toLocaleTimeString("en-SG", {
+    timeZone: "Asia/Singapore",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+const formatSGDateTime = (date: Date) =>
+  date.toLocaleString("en-SG", {
+    timeZone: "Asia/Singapore",
+  });
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -86,10 +99,15 @@ export async function GET(req: Request) {
       logMap.get(l.employee_id)!.push(new Date(l.event_time));
     });
 
-    /* ================= LATE/EARLY CHECKER ================= */
+    /* ================= LATE/EARLY CHECKER (SINGAPORE TIME) ================= */
     const checkLateOrEarly = (checkInTime: Date) => {
-      const checkInHours = checkInTime.getHours();
-      const checkInMinutes = checkInTime.getMinutes();
+      // Convert UTC time to Singapore time for comparison
+      const checkInSG = new Date(
+        checkInTime.toLocaleString("en-US", { timeZone: "Asia/Singapore" })
+      );
+
+      const checkInHours = checkInSG.getHours();
+      const checkInMinutes = checkInSG.getMinutes();
       
       const [morningStartH, morningStartM] = schedule.morning_start.split(':').map(Number);
       const [morningEndH, morningEndM] = schedule.morning_end.split(':').map(Number);
@@ -163,11 +181,11 @@ export async function GET(req: Request) {
       }
     }
 
-    /* ================= HEADER ================= */
+    /* ================= HEADER (SINGAPORE TIME) ================= */
     draw(orgName, 18, true);
     draw("Attendance Report", 14, true);
     draw(`Date: ${date}`, 12);
-    draw(`Generated: ${new Date().toLocaleString()}`, 10);
+    draw(`Generated: ${formatSGDateTime(new Date())}`, 10);
     draw("--------------------------------------------------");
     draw("");
 
@@ -189,7 +207,7 @@ export async function GET(req: Request) {
     draw("--------------------------------------------------");
     draw("");
 
-    /* ================= ROWS ================= */
+    /* ================= ROWS (SINGAPORE TIME) ================= */
     employees?.forEach((emp, index) => {
       const empLogs = logMap.get(emp.id) || [];
 
@@ -201,8 +219,8 @@ export async function GET(req: Request) {
       if (empLogs.length > 0) {
         status = "Present";
         const checkInTime = empLogs[0];
-        checkIn = checkInTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        checkOut = empLogs[empLogs.length - 1].toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        checkIn = formatSGTime(checkInTime);
+        checkOut = formatSGTime(empLogs[empLogs.length - 1]);
         
         const { isLate, isEarly } = checkLateOrEarly(checkInTime);
         if (isLate) statusNote = " (LATE)";
