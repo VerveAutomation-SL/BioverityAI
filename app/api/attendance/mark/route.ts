@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   const { data: employee } = await supabase
     .from("employees")
     .select("org_id")
-    .eq("employee_id", employee_id)
+    .eq("id", employee_id)
     .in("org_id", [primary_org_id, test_org_id])
     .single();
 
