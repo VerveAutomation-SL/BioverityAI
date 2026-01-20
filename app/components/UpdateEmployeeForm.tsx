@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { UserCheck, Upload, User, Briefcase, Building2, Check, Fingerprint } from "lucide-react";
+import { useState, useEffect } from "react";
+import { UserCheck, Upload, User, Briefcase, Building2, Check, Fingerprint, Plus, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -29,6 +29,17 @@ export default function UpdateEmployeeForm({
   const [loading, setLoading] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
 
+  // Department management - NEW
+  const [departments, setDepartments] = useState<string[]>([
+    "IT",
+    "HR",
+    "Sales",
+    "Marketing",
+    "Finance"
+  ]);
+  const [showAddDept, setShowAddDept] = useState(false);
+  const [newDeptName, setNewDeptName] = useState("");
+
   const enrolledCount = employee.biometric_enrollments?.filter(
     (enrollment: any) => enrollment.status === "enrolled"
   ).length || 0;
@@ -38,6 +49,63 @@ export default function UpdateEmployeeForm({
   );
 
   const hasEnrollment = enrolledCount > 0;
+
+  // Load custom departments - NEW
+  useEffect(() => {
+    loadDepartments();
+  }, [orgId]);
+
+  async function loadDepartments() {
+    try {
+      const res = await fetch(`/api/departments?org_id=${orgId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.departments && data.departments.length > 0) {
+          setDepartments(data.departments);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load departments:", error);
+    }
+  }
+
+  // Add department handler - NEW
+  async function handleAddDepartment() {
+    if (!newDeptName.trim()) {
+      alert("Please enter a department name");
+      return;
+    }
+
+    if (departments.includes(newDeptName.trim())) {
+      alert("This department already exists");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/departments/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          org_id: orgId,
+          name: newDeptName.trim(),
+        }),
+      });
+
+      if (res.ok) {
+        const updatedDepts = [...departments, newDeptName.trim()];
+        setDepartments(updatedDepts);
+        setDepartment(newDeptName.trim());
+        setNewDeptName("");
+        setShowAddDept(false);
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to add department");
+      }
+    } catch (error) {
+      console.error("Failed to add department:", error);
+      alert("Failed to add department");
+    }
+  }
 
   const handlePhotoChange = (file: File | null | undefined) => {
     if (!file) return;
@@ -349,19 +417,75 @@ export default function UpdateEmployeeForm({
                 <Building2 className="w-4 h-4 text-emerald-600" />
                 Department
               </label>
-              <select
-                className="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-emerald-600 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                disabled={isFormDisabled}
-              >
-                <option value="">Select Department</option>
-                <option value="IT">IT</option>
-                <option value="HR">HR</option>
-                <option value="Sales">Sales</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Finance">Finance</option>
-              </select>
+              {/* MODIFIED SECTION - Added department management */}
+              <div className="space-y-3">
+                <select
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  className="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-emerald-600 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isFormDisabled}
+                  size={1}
+                  style={{
+                    maxHeight: departments.length > 6 ? '300px' : 'auto',
+                    overflowY: departments.length > 6 ? 'auto' : 'visible'
+                  }}
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+
+                {!showAddDept ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddDept(true)}
+                    disabled={isFormDisabled}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-slate-300 rounded-xl text-sm font-semibold text-slate-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add New Department
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newDeptName}
+                      onChange={(e) => setNewDeptName(e.target.value)}
+                      placeholder="Department name"
+                      className="flex-1 border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-emerald-500 focus:outline-none"
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddDepartment();
+                        }
+                      }}
+                      disabled={isFormDisabled}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddDepartment}
+                      disabled={isFormDisabled}
+                      className="px-3 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddDept(false);
+                        setNewDeptName("");
+                      }}
+                      disabled={isFormDisabled}
+                      className="px-3 py-2 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* END MODIFIED SECTION */}
             </div>
 
             <div>
