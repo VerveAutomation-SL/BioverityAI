@@ -38,7 +38,7 @@ export async function PUT(req: Request) {
           biometric_type,
           status,
           template_id,
-          enrolled_at
+          created_at
         )
       `)
       .single();
