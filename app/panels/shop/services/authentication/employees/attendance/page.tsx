@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, ClipboardCheck, Users, Calendar, TrendingUp, Clock, Loader2, Settings } from "lucide-react";
+import { CheckCircle2, XCircle, ClipboardCheck, Users, Calendar, TrendingUp, Clock, Loader2, Settings, Download } from "lucide-react";
 
 type AttendanceRow = {
   employee_id: string;
@@ -13,6 +13,8 @@ type AttendanceRow = {
   status: "present" | "absent" | "not_arrived";
   check_in: string | null;
   check_out: string | null;
+  is_late?: boolean;
+  is_early?: boolean;
 };
 
 type Schedule = {
@@ -26,6 +28,7 @@ export default function AttendancePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const [date, setDate] = useState(
     new Date().toISOString().slice(0, 10)
@@ -34,7 +37,6 @@ export default function AttendancePage() {
   const [employees, setEmployees] = useState<AttendanceRow[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState(false);
 
-  // Schedule state
   const [schedule, setSchedule] = useState<Schedule>({
     morning_start: "09:00",
     morning_end: "12:00",
@@ -44,7 +46,6 @@ export default function AttendancePage() {
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
 
-  // Fetch user profile and org_id
   useEffect(() => {
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -67,7 +68,6 @@ export default function AttendancePage() {
     })();
   }, []);
 
-  // Fetch schedule when profile loads
   useEffect(() => {
     if (!profile?.org_id) return;
 
@@ -102,43 +102,52 @@ export default function AttendancePage() {
     loadSchedule();
   }, [profile?.org_id]);
 
-  // Fetch attendance data when profile or date change
-  useEffect(() => {
+  const loadAttendance = async () => {
     if (!profile?.org_id) return;
 
-    async function loadAttendance() {
-      setEmployeesLoading(true);
+    setEmployeesLoading(true);
 
-      try {
-        // Get the current session token
-        const { data: { session } } = await supabase.auth.getSession();
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
 
-        const res = await fetch(
-          `/api/attendance/by-date?date=${date}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${session?.access_token}`
-            }
+      const res = await fetch(
+        `/api/attendance/by-date?date=${date}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`
           }
-        );
-
-        if (!res.ok) {
-          const errorData = await res.json();
-          console.error("Attendance API error:", errorData);
-          throw new Error(errorData.error || "Failed to fetch attendance");
         }
+      );
 
-        const data = await res.json();
-        setEmployees(data.data || []);
-      } catch (err) {
-        console.error("Error fetching attendance:", err);
-      } finally {
-        setEmployeesLoading(false);
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("Attendance API error:", errorData);
+        throw new Error(errorData.error || "Failed to fetch attendance");
       }
-    }
 
+      const data = await res.json();
+      setEmployees(data.data || []);
+    } catch (err) {
+      console.error("Error fetching attendance:", err);
+    } finally {
+      setEmployeesLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadAttendance();
   }, [profile?.org_id, date]);
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (date !== today) return;
+
+    const interval = setInterval(() => {
+      loadAttendance();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [date, profile?.org_id]);
 
   // Save schedule
   const saveSchedule = async () => {
@@ -166,6 +175,43 @@ export default function AttendancePage() {
       alert("Failed to save schedule");
     } finally {
       setScheduleSaving(false);
+    }
+  };
+
+  const downloadAttendancePdf = async () => {
+    setDownloadingPdf(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const res = await fetch(
+        `/api/attendance/export?date=${date}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to download PDF");
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `attendance-${date}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+      alert("Failed to download attendance PDF");
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -205,6 +251,25 @@ export default function AttendancePage() {
             onChange={(e) => setDate(e.target.value)}
             className="border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
+
+          {/* PDF Download Button */}
+          <button
+            onClick={downloadAttendancePdf}
+            disabled={downloadingPdf || employees.length === 0}
+            className="ml-4 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {downloadingPdf ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Downloading...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Download PDF
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -450,11 +515,23 @@ export default function AttendancePage() {
                             {emp.role}
                           </p>
                           {emp.status === "present" && emp.check_in && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <Clock className="w-3 h-3 text-emerald-600" />
-                              <p className="text-xs text-emerald-600 font-semibold">
-                                Check-in: {new Date(emp.check_in).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-emerald-600" />
+                                <p className="text-xs text-emerald-600 font-semibold">
+                                  {new Date(emp.check_in).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                </p>
+                              </div>
+                              {emp.is_late && (
+                                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-semibold rounded">
+                                  Late
+                                </span>
+                              )}
+                              {emp.is_early && (
+                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                                  Early
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
