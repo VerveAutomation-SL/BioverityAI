@@ -9,9 +9,11 @@ export default function AuthenticationDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [totalEmployees, setTotalEmployees] = useState(0);
+  const [dashboard, setDashboard] = useState<any>(null);
 
   useEffect(() => {
     fetchEmployeeCount();
+    loadDashboard();
   }, []);
 
   const fetchEmployeeCount = async () => {
@@ -20,7 +22,7 @@ export default function AuthenticationDashboard() {
       setError("");
 
       const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+
       if (authError || !user) {
         setError("User not authenticated");
         setLoading(false);
@@ -30,28 +32,28 @@ export default function AuthenticationDashboard() {
       let orgId = null;
 
       orgId = localStorage.getItem("org_id");
-      
+
       if (!orgId && user.user_metadata?.org_id) {
         orgId = user.user_metadata.org_id;
       }
-      
+
       if (!orgId) {
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("org_id")
           .eq("id", user.id)
           .single();
-        
+
         if (profileError) {
           console.error("Error fetching profile:", profileError);
         }
-        
+
         if (profile?.org_id) {
           orgId = profile.org_id;
           localStorage.setItem("org_id", orgId);
         }
       }
-      
+
       if (!orgId) {
         setError("Organization ID not found. Please check your profile settings.");
         setLoading(false);
@@ -59,7 +61,7 @@ export default function AuthenticationDashboard() {
       }
 
       const response = await fetch(`/api/employees/fetch?org_id=${orgId}`);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error("Error fetching employees:", errorData);
@@ -70,7 +72,7 @@ export default function AuthenticationDashboard() {
 
       const data = await response.json();
       setTotalEmployees(data.employees?.length || 0);
-      
+
     } catch (err) {
       console.error("Error fetching employee count:", err);
       setError("An unexpected error occurred");
@@ -79,10 +81,39 @@ export default function AuthenticationDashboard() {
     }
   };
 
+  const loadDashboard = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        console.error("No session token");
+        return;
+      }
+
+      const res = await fetch("/api/dashboard/attendance", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        console.error("Dashboard API error:", err);
+        return;
+      }
+
+      const data = await res.json();
+      setDashboard(data);
+    } catch (err) {
+      console.error("Error loading dashboard:", err);
+    }
+  };
+
+
   const stats = [
     {
       title: "Total Employees",
-      value: loading ? "..." : totalEmployees.toString(),
+      value: dashboard?.totalEmployees ?? (loading ? "..." : totalEmployees.toString()),
       icon: Users,
       color: "text-blue-600",
       bg: "bg-blue-50",
@@ -90,7 +121,7 @@ export default function AuthenticationDashboard() {
     },
     {
       title: "Present Today",
-      value: "0",
+      value: dashboard?.presentToday ?? "...",
       icon: UserCheck,
       color: "text-green-600",
       bg: "bg-green-50",
@@ -106,26 +137,12 @@ export default function AuthenticationDashboard() {
     },
     {
       title: "Absent",
-      value: "0",
+      value: dashboard?.absentToday ?? "...",
       icon: UserX,
       color: "text-red-600",
       bg: "bg-red-50",
       border: "border-red-200",
     },
-  ];
-
-  const attendanceData = [
-    { name: "Present", value: 102, color: "#16a34a" },
-    { name: "On Leave", value: 18, color: "#d97706" },
-    { name: "Absent", value: 8, color: "#dc2626" },
-  ];
-
-  const trendData = [
-    { day: "Mon", present: 98, absent: 10 },
-    { day: "Tue", present: 105, absent: 7 },
-    { day: "Wed", present: 102, absent: 8 },
-    { day: "Thu", present: 108, absent: 5 },
-    { day: "Fri", present: 102, absent: 8 },
   ];
 
   return (
@@ -146,7 +163,7 @@ export default function AuthenticationDashboard() {
         {error && (
           <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
             <p className="text-red-700 text-sm">{error}</p>
-            <button 
+            <button
               onClick={fetchEmployeeCount}
               className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
             >
@@ -199,7 +216,7 @@ export default function AuthenticationDashboard() {
             <ResponsiveContainer width="100%" height={224}>
               <PieChart>
                 <Pie
-                  data={attendanceData}
+                  data={dashboard?.pie || []}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -208,7 +225,7 @@ export default function AuthenticationDashboard() {
                   dataKey="value"
                   label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                 >
-                  {attendanceData.map((entry, index) => (
+                  {(dashboard?.pie || []).map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -227,23 +244,23 @@ export default function AuthenticationDashboard() {
             </p>
 
             <ResponsiveContainer width="100%" height={224}>
-              <LineChart data={trendData}>
+              <LineChart data={dashboard?.trend || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="day" stroke="#6b7280" />
                 <YAxis stroke="#6b7280" />
                 <Tooltip />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="present" 
-                  stroke="#16a34a" 
+                <Line
+                  type="monotone"
+                  dataKey="present"
+                  stroke="#16a34a"
                   strokeWidth={2}
                   name="Present"
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="absent" 
-                  stroke="#dc2626" 
+                <Line
+                  type="monotone"
+                  dataKey="absent"
+                  stroke="#dc2626"
                   strokeWidth={2}
                   name="Absent"
                 />

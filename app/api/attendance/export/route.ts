@@ -1,19 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-
-// Singapore timezone formatters
-const formatSGTime = (date: Date) =>
-  date.toLocaleTimeString("en-SG", {
-    timeZone: "Asia/Singapore",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-const formatSGDateTime = (date: Date) =>
-  date.toLocaleString("en-SG", {
-    timeZone: "Asia/Singapore",
-  });
+import { formatSGTime, formatSGDateTime, toSGDate, sgDayRange } from "@/lib/time";
 
 export async function GET(req: Request) {
   try {
@@ -73,10 +61,13 @@ export async function GET(req: Request) {
       evening_end: "17:00",
     };
 
-    /* ================= DATE LOGIC ================= */
-    const startOfDay = `${date}T00:00:00Z`;
-    const endOfDay = `${date}T23:59:59Z`;
-    const isToday = date === new Date().toISOString().slice(0, 10);
+    /* ================= DATE LOGIC (SINGAPORE TIME) ================= */
+    const { start, end } = sgDayRange(date);
+    
+    // Get current Singapore date for "isToday" check
+    const nowSG = new Date().toLocaleString("en-US", { timeZone: "Asia/Singapore" });
+    const todaySG = new Date(nowSG).toISOString().slice(0, 10);
+    const isToday = date === todaySG;
 
     /* ================= EMPLOYEES ================= */
     const { data: employees } = await supabase
@@ -84,13 +75,13 @@ export async function GET(req: Request) {
       .select("id, employee_id, full_name, role")
       .eq("org_id", orgName);
 
-    /* ================= LOGS ================= */
+    /* ================= LOGS (SINGAPORE DAY BOUNDARIES) ================= */
     const { data: logs } = await supabase
       .from("attendance_logs")
       .select("employee_id, event_time")
       .eq("org_id", orgName)
-      .gte("event_time", startOfDay)
-      .lte("event_time", endOfDay)
+      .gte("event_time", start)
+      .lte("event_time", end)
       .order("event_time", { ascending: true });
 
     const logMap = new Map<string, Date[]>();
@@ -101,13 +92,10 @@ export async function GET(req: Request) {
 
     /* ================= LATE/EARLY CHECKER (SINGAPORE TIME) ================= */
     const checkLateOrEarly = (checkInTime: Date) => {
-      // Convert UTC time to Singapore time for comparison
-      const checkInSG = new Date(
-        checkInTime.toLocaleString("en-US", { timeZone: "Asia/Singapore" })
-      );
-
-      const checkInHours = checkInSG.getHours();
-      const checkInMinutes = checkInSG.getMinutes();
+      // ✅ FIXED: Convert to Singapore time using toSGDate
+      const sgCheckIn = toSGDate(checkInTime);
+      const hours = sgCheckIn.getHours();
+      const minutes = sgCheckIn.getMinutes();
       
       const [morningStartH, morningStartM] = schedule.morning_start.split(':').map(Number);
       const [morningEndH, morningEndM] = schedule.morning_end.split(':').map(Number);
@@ -116,7 +104,7 @@ export async function GET(req: Request) {
       const morningStartMinutes = morningStartH * 60 + morningStartM;
       const morningEndMinutes = morningEndH * 60 + morningEndM;
       const eveningStartMinutes = eveningStartH * 60 + eveningStartM;
-      const checkInTotalMinutes = checkInHours * 60 + checkInMinutes;
+      const checkInTotalMinutes = hours * 60 + minutes;
 
       let isLate = false;
       let isEarly = false;
@@ -185,6 +173,7 @@ export async function GET(req: Request) {
     draw(orgName, 18, true);
     draw("Attendance Report", 14, true);
     draw(`Date: ${date}`, 12);
+    // ✅ FIXED: Use formatSGDateTime helper
     draw(`Generated: ${formatSGDateTime(new Date())}`, 10);
     draw("--------------------------------------------------");
     draw("");
@@ -219,8 +208,9 @@ export async function GET(req: Request) {
       if (empLogs.length > 0) {
         status = "Present";
         const checkInTime = empLogs[0];
-        checkIn = formatSGTime(checkInTime);
-        checkOut = formatSGTime(empLogs[empLogs.length - 1]);
+        // ✅ FIXED: Use formatSGTime helper with ISO string
+        checkIn = formatSGTime(checkInTime.toISOString());
+        checkOut = formatSGTime(empLogs[empLogs.length - 1].toISOString());
         
         const { isLate, isEarly } = checkLateOrEarly(checkInTime);
         if (isLate) statusNote = " (LATE)";

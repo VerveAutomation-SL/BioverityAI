@@ -40,7 +40,9 @@ export default function AttendancePage() {
   const [currentTime, setCurrentTime] = useState("");
 
   const [date, setDate] = useState(
-    new Date().toISOString().slice(0, 10)
+    new Date().toLocaleDateString("en-CA", {
+      timeZone: "Asia/Singapore",
+    })
   );
 
   const [employees, setEmployees] = useState<AttendanceRow[]>([]);
@@ -165,7 +167,9 @@ export default function AttendancePage() {
   }, [profile?.org_id, date]);
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Asia/Singapore",
+    });
     if (date !== today) return;
 
     const interval = setInterval(() => {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sgDayRange } from "@/lib/time";
 
 export async function GET(req: Request) {
   try {
@@ -7,7 +8,6 @@ export async function GET(req: Request) {
     
     const authHeader = req.headers.get('Authorization');
     const token = authHeader?.replace('Bearer ', '');
-
     if (!token) {
       return NextResponse.json({ error: "No auth token provided" }, { status: 401 });
     }
@@ -44,15 +44,17 @@ export async function GET(req: Request) {
 
     const org_id = profile.org_id;
     const date = searchParams.get("date");
-
     if (!date) {
       return NextResponse.json({ error: "date is required" }, { status: 400 });
     }
 
-    const startOfDay = `${date}T00:00:00Z`;
-    const endOfDay = `${date}T23:59:59Z`;
-    const today = new Date().toISOString().slice(0, 10);
-    const isToday = date === today;
+    // ✅ FIXED: Use Singapore day range instead of UTC
+    const { start, end } = sgDayRange(date);
+
+    // Get current Singapore date for "isToday" check
+    const nowSG = new Date().toLocaleString("en-US", { timeZone: "Asia/Singapore" });
+    const todaySG = new Date(nowSG).toISOString().slice(0, 10);
+    const isToday = date === todaySG;
 
     // Fetch employees
     const { data: employees, error: empErr } = await supabase
@@ -65,13 +67,13 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: empErr.message }, { status: 500 });
     }
 
-    // Fetch attendance logs - employee_id here is the UUID from employees.id
+    // Fetch attendance logs using Singapore day boundaries
     const { data: logs, error: logErr } = await supabase
       .from("attendance_logs")
       .select("employee_id, event_time")
       .eq("org_id", org_id)
-      .gte("event_time", startOfDay)
-      .lte("event_time", endOfDay)
+      .gte("event_time", start)
+      .lte("event_time", end)
       .order("event_time", { ascending: true });
 
     if (logErr) {
@@ -79,9 +81,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: logErr.message }, { status: 500 });
     }
 
-    // Group logs by employee_id (UUID) - this matches employees.id
+    // Group logs by employee_id (UUID)
     const logMap = new Map<string, Date[]>();
-
     logs?.forEach((log) => {
       if (!logMap.has(log.employee_id)) {
         logMap.set(log.employee_id, []);
