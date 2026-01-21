@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, Calendar, BarChart3, FileText, TrendingUp, Users, Clock } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 type ReportType = "day" | "week" | "month" | "year";
 
@@ -12,69 +13,51 @@ export default function ReportsPage() {
   const [toDate, setToDate] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
 
-  // Dummy stats data
-  const stats = {
-    totalReports: 156,
-    thisMonth: 42,
-    avgAttendance: 94,
+
+  // ✅ Download handler function
+  const downloadReport = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return alert("Not authenticated");
+
+    let url = "/api/attendance/export?";
+    
+    if (reportType === "day") {
+      url += `type=day&from=${fromDate}&to=${toDate}`;
+    }
+
+    if (reportType === "week") {
+      url += `type=week&week=${selectedDate}`;
+    }
+
+    if (reportType === "month") {
+      url += `type=month&month=${selectedDate}`;
+    }
+
+    if (reportType === "year") {
+      url += `type=year&year=${selectedYear}`;
+    }
+
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (!res.ok) {
+      alert("Failed to download report");
+      return;
+    }
+
+    const blob = await res.blob();
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `attendance-${reportType}.pdf`;
+    link.click();
   };
 
   return (
     <div className="space-y-8">
-      {/* Hero Section */}
-      <div className="mb-10">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-            <BarChart3 className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-              Attendance Reports
-            </h1>
-          </div>
-        </div>
-        <p className="text-slate-600 text-lg ml-15">
-          Generate and download comprehensive attendance reports for analysis
-        </p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Total Reports */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-              <FileText className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <p className="text-sm font-semibold text-slate-600 mb-1">Total Reports</p>
-          <p className="text-3xl font-bold text-slate-800">{stats.totalReports}</p>
-        </div>
-
-        {/* This Month */}
-        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-              <Calendar className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <p className="text-sm font-semibold text-slate-600 mb-1">This Month</p>
-          <p className="text-3xl font-bold text-emerald-700">{stats.thisMonth}</p>
-        </div>
-
-        {/* Avg Attendance */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-              <TrendingUp className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <p className="text-sm font-semibold text-slate-600 mb-1">Avg Attendance</p>
-          <p className="text-3xl font-bold text-purple-700">{stats.avgAttendance}%</p>
-        </div>
-      </div>
-
-      {/* Report Generator */}
+        {/* Report Generator */}
       <div className="bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
         <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
           <div className="flex items-center gap-3">
@@ -196,7 +179,6 @@ export default function ReportsPage() {
             />
           )}
 
-
           {/* Report Preview Info */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5">
             <div className="flex items-start gap-3">
@@ -213,10 +195,11 @@ export default function ReportsPage() {
           {/* Download Button */}
           <div className="flex justify-between items-center pt-4">
             <div className="text-sm text-slate-600">
-              <span className="font-semibold">Format:</span> Excel (.xlsx)
+              <span className="font-semibold">Format:</span> PDF
             </div>
             <button
               type="button"
+              onClick={downloadReport}
               disabled={
                 (reportType === "day" && (!fromDate || !toDate)) ||
                 (reportType === "week" && !selectedDate) ||
@@ -224,7 +207,10 @@ export default function ReportsPage() {
                 (reportType === "year" && !selectedYear)
               }
               className={`px-8 py-4 rounded-2xl font-semibold flex items-center gap-3 transition-all duration-300 transform
-                ${selectedDate
+                ${(reportType === "day" && fromDate && toDate) ||
+                  (reportType === "week" && selectedDate) ||
+                  (reportType === "month" && selectedDate) ||
+                  (reportType === "year" && selectedYear)
                   ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-lg hover:scale-105"
                   : "bg-slate-200 text-slate-400 cursor-not-allowed"
                 }`}

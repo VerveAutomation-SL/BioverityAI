@@ -3,14 +3,99 @@ import { createClient } from "@supabase/supabase-js";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { formatSGTime, formatSGDateTime, toSGDate, sgDayRange } from "@/lib/time";
 
+/* ================= SINGAPORE DATE RANGE HELPER ================= */
+const sgRangeFromParams = (params: URLSearchParams) => {
+  const type = params.get("type");
+
+  if (type === "day") {
+    const from = params.get("from");
+    const to = params.get("to");
+    if (!from || !to) throw new Error("Missing from/to dates");
+    
+    return {
+      start: sgDayRange(from).start,
+      end: sgDayRange(to).end,
+      label: `${from} to ${to}`,
+      type: "day",
+    };
+  }
+
+  if (type === "week") {
+    const week = params.get("week");
+    if (!week) throw new Error("Missing week parameter");
+    
+    const [year, weekNum] = week.split("-W").map(Number);
+    // Get first day of the week (Monday)
+    const firstDay = new Date(year, 0, 1 + (weekNum - 1) * 7);
+    const dayOfWeek = firstDay.getDay();
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust to Monday
+    firstDay.setDate(firstDay.getDate() + diff);
+    
+    const lastDay = new Date(firstDay);
+    lastDay.setDate(lastDay.getDate() + 6); // Sunday
+    
+    const start = firstDay.toISOString().slice(0, 10);
+    const end = lastDay.toISOString().slice(0, 10);
+    
+    return {
+      start: sgDayRange(start).start,
+      end: sgDayRange(end).end,
+      label: `Week ${weekNum}, ${year}`,
+      type: "week",
+    };
+  }
+
+  if (type === "month") {
+    const month = params.get("month");
+    if (!month) throw new Error("Missing month parameter");
+    
+    const [y, m] = month.split("-");
+    const start = `${y}-${m}-01`;
+    const lastDay = new Date(+y, +m, 0).getDate();
+    const end = `${y}-${m}-${String(lastDay).padStart(2, "0")}`;
+    
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const label = `${monthNames[+m - 1]} ${y}`;
+    
+    return {
+      start: sgDayRange(start).start,
+      end: sgDayRange(end).end,
+      label,
+      type: "month",
+    };
+  }
+
+  if (type === "year") {
+    const year = params.get("year");
+    if (!year) throw new Error("Missing year parameter");
+    
+    return {
+      start: sgDayRange(`${year}-01-01`).start,
+      end: sgDayRange(`${year}-12-31`).end,
+      label: year,
+      type: "year",
+    };
+  }
+
+  throw new Error("Invalid report type");
+};
+
+/* ================= COUNT DAYS IN RANGE HELPER ================= */
+const countDaysBetween = (startISO: string, endISO: string) => {
+  const start = new Date(startISO.slice(0, 10));
+  const end = new Date(endISO.slice(0, 10));
+  let count = 0;
+
+  while (start <= end) {
+    count++;
+    start.setDate(start.getDate() + 1);
+  }
+  return count;
+};
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const date = searchParams.get("date");
-
-    if (!date) {
-      return NextResponse.json({ error: "date is required" }, { status: 400 });
-    }
 
     /* ================= AUTH ================= */
     const authHeader = req.headers.get("Authorization");
@@ -61,13 +146,12 @@ export async function GET(req: Request) {
       evening_end: "17:00",
     };
 
-    /* ================= DATE LOGIC (SINGAPORE TIME) ================= */
-    const { start, end } = sgDayRange(date);
+    /* ================= DATE RANGE FROM PARAMS (SINGAPORE TIME) ================= */
+    const { start, end, label, type } = sgRangeFromParams(searchParams);
     
     // Get current Singapore date for "isToday" check
     const nowSG = new Date().toLocaleString("en-US", { timeZone: "Asia/Singapore" });
     const todaySG = new Date(nowSG).toISOString().slice(0, 10);
-    const isToday = date === todaySG;
 
     /* ================= EMPLOYEES ================= */
     const { data: employees } = await supabase
@@ -92,7 +176,6 @@ export async function GET(req: Request) {
 
     /* ================= LATE/EARLY CHECKER (SINGAPORE TIME) ================= */
     const checkLateOrEarly = (checkInTime: Date) => {
-      // ✅ FIXED: Convert to Singapore time using toSGDate
       const sgCheckIn = toSGDate(checkInTime);
       const hours = sgCheckIn.getHours();
       const minutes = sgCheckIn.getMinutes();
@@ -122,6 +205,39 @@ export async function GET(req: Request) {
 
       return { isLate, isEarly };
     };
+
+    /* ================= SUMMARY CALCULATION (FIXED FOR MULTI-DAY) ================= */
+    let presentCount: number;
+    let absentCount: number;
+    let attendanceRate: number;
+    let totalDays: number;
+
+    if (type === "day") {
+      // For single day: count employees who checked in
+      presentCount = employees?.filter(emp => {
+        const empLogs = logMap.get(emp.id) || [];
+        return empLogs.length > 0;
+      }).length || 0;
+      
+      absentCount = (employees?.length || 0) - presentCount;
+      attendanceRate = employees?.length ? Math.round((presentCount / employees.length) * 100) : 0;
+      totalDays = 1;
+    } else {
+      // For multi-day: count unique employee-day combinations
+      const uniqueAttendances = new Set<string>();
+      logs?.forEach(l => {
+        const day = l.event_time.slice(0, 10);
+        uniqueAttendances.add(`${l.employee_id}-${day}`);
+      });
+      
+      const totalEmployees = employees?.length || 0;
+      totalDays = countDaysBetween(start, end);
+      const expectedAttendances = totalEmployees * totalDays;
+      
+      presentCount = uniqueAttendances.size;
+      absentCount = expectedAttendances - presentCount;
+      attendanceRate = expectedAttendances > 0 ? Math.round((presentCount / expectedAttendances) * 100) : 0;
+    }
 
     /* ================= PDF ================= */
     const pdf = await PDFDocument.create();
@@ -172,26 +288,25 @@ export async function GET(req: Request) {
     /* ================= HEADER (SINGAPORE TIME) ================= */
     draw(orgName, 18, true);
     draw("Attendance Report", 14, true);
-    draw(`Date: ${date}`, 12);
-    // ✅ FIXED: Use formatSGDateTime helper
+    draw(`Period: ${label}`, 12);
     draw(`Generated: ${formatSGDateTime(new Date())}`, 10);
     draw("--------------------------------------------------");
     draw("");
 
     /* ================= SUMMARY ================= */
-    const presentCount = employees?.filter(emp => {
-      const empLogs = logMap.get(emp.id) || [];
-      return empLogs.length > 0;
-    }).length || 0;
-
-    const absentCount = (employees?.length || 0) - presentCount;
-    const attendanceRate = employees?.length ? Math.round((presentCount / employees.length) * 100) : 0;
-
     draw(`Summary`, 12, true);
     draw(`Total Employees: ${employees?.length || 0}`);
-    draw(`Present: ${presentCount}`);
-    draw(`Absent: ${absentCount}`);
-    draw(`Attendance Rate: ${attendanceRate}%`);
+    
+    if (type === "day") {
+      draw(`Present: ${presentCount}`);
+      draw(`Absent: ${absentCount}`);
+      draw(`Attendance Rate: ${attendanceRate}%`);
+    } else {
+      draw(`Total Attendances: ${presentCount}`);
+      draw(`Expected Attendances: ${presentCount + absentCount}`);
+      draw(`Attendance Rate: ${attendanceRate}%`);
+    }
+    
     draw("");
     draw("--------------------------------------------------");
     draw("");
@@ -200,32 +315,52 @@ export async function GET(req: Request) {
     employees?.forEach((emp, index) => {
       const empLogs = logMap.get(emp.id) || [];
 
-      let status = "Absent";
-      let checkIn = "-";
-      let checkOut = "-";
-      let statusNote = "";
+      if (type === "day") {
+        // Single day format - show check-in/check-out details
+        let status = "Absent";
+        let checkIn = "-";
+        let checkOut = "-";
+        let statusNote = "";
 
-      if (empLogs.length > 0) {
-        status = "Present";
-        const checkInTime = empLogs[0];
-        // ✅ FIXED: Use formatSGTime helper with ISO string
-        checkIn = formatSGTime(checkInTime.toISOString());
-        checkOut = formatSGTime(empLogs[empLogs.length - 1].toISOString());
+        if (empLogs.length > 0) {
+          status = "Present";
+          const checkInTime = empLogs[0];
+          checkIn = formatSGTime(checkInTime.toISOString());
+          checkOut = formatSGTime(empLogs[empLogs.length - 1].toISOString());
+          
+          const { isLate, isEarly } = checkLateOrEarly(checkInTime);
+          if (isLate) statusNote = " (LATE)";
+          if (isEarly) statusNote = " (EARLY)";
+        }
+
+        draw(`${index + 1}. ${emp.full_name}`, 12, true);
+        draw(`   Employee ID: ${emp.employee_id}`);
+        draw(`   Role       : ${emp.role || "-"}`);
+        draw(`   Status     : ${status}${statusNote}`);
+        draw(`   Check-In   : ${checkIn}`);
+        draw(`   Check-Out  : ${checkOut}`);
+        draw("");
+      } else {
+        // Multi-day format - show attendance summary
+        const empDaysPresent = new Set<string>();
+        empLogs.forEach(log => {
+          empDaysPresent.add(log.toISOString().slice(0, 10));
+        });
         
-        const { isLate, isEarly } = checkLateOrEarly(checkInTime);
-        if (isLate) statusNote = " (LATE)";
-        if (isEarly) statusNote = " (EARLY)";
-      } else if (isToday) {
-        status = "Not Arrived";
-      }
+        const presentDays = empDaysPresent.size;
+        const absentDays = Math.max(totalDays - presentDays, 0);
+        const attendanceRate = totalDays > 0 
+          ? Math.round((presentDays / totalDays) * 100) 
+          : 0;
 
-      draw(`${index + 1}. ${emp.full_name}`, 12, true);
-      draw(`   Employee ID: ${emp.employee_id}`);
-      draw(`   Role       : ${emp.role || "-"}`);
-      draw(`   Status     : ${status}${statusNote}`);
-      draw(`   Check-In   : ${checkIn}`);
-      draw(`   Check-Out  : ${checkOut}`);
-      draw("");
+        draw(`${index + 1}. ${emp.full_name}`, 12, true);
+        draw(`   Employee ID: ${emp.employee_id}`);
+        draw(`   Role       : ${emp.role || "-"}`);
+        draw(`   Present    : ${presentDays} days`);
+        draw(`   Absent     : ${absentDays} days`);
+        draw(`   Rate       : ${attendanceRate}%`);
+        draw("");
+      }
     });
 
     /* ================= FOOTER ================= */
@@ -246,7 +381,7 @@ export async function GET(req: Request) {
     return new NextResponse(pdfBytes as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="attendance-${date}.pdf"`,
+        "Content-Disposition": `attachment; filename="attendance-${label.replace(/\s+/g, '-')}.pdf"`,
         "Cache-Control": "no-cache",
       },
     });
@@ -254,7 +389,7 @@ export async function GET(req: Request) {
   } catch (err) {
     console.error("Attendance PDF error:", err);
     return NextResponse.json(
-      { error: "Failed to generate attendance PDF" },
+      { error: err instanceof Error ? err.message : "Failed to generate attendance PDF" },
       { status: 500 }
     );
   }

@@ -273,23 +273,6 @@ export default function AuthenticationLayout({
       ${openSchedule ? "max-h-40 opacity-100" : "max-h-0 opacity-0"}
     `}
             >
-              {/* Automatic */}
-              <button
-                onClick={() =>
-                  router.push(
-                    "/panels/shop/services/authentication/schedule/biometric"
-                  )
-                }
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200
-        ${pathname ===
-                    "/panels/shop/services/authentication/schedule/automatic"
-                    ? "bg-emerald-100 text-emerald-700 font-semibold shadow-sm"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-              >
-                <span className="text-sm">Biometric Schedule</span>
-              </button>
-
               {/* Manual */}
               <button
                 onClick={() =>

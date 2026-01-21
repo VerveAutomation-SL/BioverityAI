@@ -212,33 +212,28 @@ export default function AttendancePage() {
     setDownloadingPdf(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
 
-      const res = await fetch(
-        `/api/attendance/export?date=${date}`,
-        {
-          headers: {
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-        }
-      );
+      const url = `/api/attendance/export?type=day&from=${date}&to=${date}`;
+
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
       if (!res.ok) {
-        throw new Error("Failed to download PDF");
+        const err = await res.text();
+        throw new Error(err);
       }
 
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-
       const a = document.createElement("a");
-      a.href = url;
+      a.href = URL.createObjectURL(blob);
       a.download = `attendance-${date}.pdf`;
-      document.body.appendChild(a);
       a.click();
-      a.remove();
-
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("PDF download failed:", err);
+    } catch (e) {
+      console.error(e);
       alert("Failed to download attendance PDF");
     } finally {
       setDownloadingPdf(false);
