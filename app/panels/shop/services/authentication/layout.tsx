@@ -14,6 +14,7 @@ import {
   CalendarDays,
   ChevronDown,
   X,
+  Cpu,
 } from "lucide-react";
 
 interface Profile {
@@ -165,6 +166,22 @@ export default function AuthenticationLayout({
             <Bell className="w-5 h-5" />
             <span>Alerts</span>
           </button>
+
+          {/* Device Logs */}
+          <button
+            onClick={() =>
+              router.push("/panels/shop/services/authentication/device-logs")
+            }
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all duration-200
+    ${pathname === "/panels/shop/services/authentication/device-logs"
+                ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-200 scale-105"
+                : "text-slate-700 hover:bg-slate-100 hover:scale-105"
+              }`}
+          >
+            <Cpu className="w-5 h-5" />
+            <span>Device Logs</span>
+          </button>
+
 
           {/* Employees Dropdown */}
           <div className="space-y-1">
