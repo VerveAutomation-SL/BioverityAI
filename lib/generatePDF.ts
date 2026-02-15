@@ -96,7 +96,7 @@ export default async function generateAttendancePDF(
 
     y -= 110;
 
-    const employee = log.employees?.[0];
+    const employee = log.employees;
 
     // EMPLOYEE SECTION
     page.drawText(`Organization: ${orgName}`, { x: 50, y, size: 12, font });
