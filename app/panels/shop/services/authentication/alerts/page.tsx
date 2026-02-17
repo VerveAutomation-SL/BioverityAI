@@ -101,7 +101,7 @@ export default function AlertsPage() {
 
     const { error } = await supabase
       .from("alert_recipients")
-      .upsert({
+      .insert({
         org_id: orgId,
         name: formData.name.trim(),
         // 🔹 Normalize the number before saving
