@@ -8,9 +8,10 @@ export async function GET(req: Request) {
 
         const org_id = searchParams.get("org_id");
         const key = searchParams.get("key");
+        const CRON_SECRET = "BioverityAICronSecret";
 
         return NextResponse.json({
-            envSecret: process.env.CRON_SECRET,
+            hardcodedSecret: CRON_SECRET,
             urlKey: key,
             equal: key === process.env.CRON_SECRET
         });
