@@ -13,7 +13,7 @@ export async function GET(req: Request) {
         return NextResponse.json({
             hardcodedSecret: CRON_SECRET,
             urlKey: key,
-            equal: key === process.env.CRON_SECRET
+            equal: key === CRON_SECRET
         });
 
         // if (!org_id) {
