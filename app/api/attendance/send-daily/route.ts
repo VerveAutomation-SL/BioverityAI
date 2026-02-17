@@ -9,6 +9,7 @@ export async function GET(req: Request) {
         const org_id = searchParams.get("org_id");
         const key = searchParams.get("key");
         const CRON_SECRET = "BioverityAICronSecret";
+        const WASENDER_KEY = "45c4351855553c63e57fdca99f068b61d309e8d4537a5da029666516b9cca618";
 
         if (!org_id) {
             return NextResponse.json({ error: "Missing org_id" }, { status: 400 });
@@ -105,10 +106,10 @@ export async function GET(req: Request) {
 
         /* ================= SEND WHATSAPP DOCUMENT ================= */
 
-        const waResponse = await fetch("https://wasenderapi.com/api/send-message", {
+        const waResponse = await fetch("https://www.wasenderapi.com/api/send-message", {
             method: "POST",
             headers: {
-                Authorization: `Bearer ${process.env.WASENDER_API_KEY}`,
+                Authorization: `Bearer ${WASENDER_KEY}`,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
