@@ -105,7 +105,7 @@ export async function GET(req: Request) {
 
         /* ================= SEND WHATSAPP DOCUMENT ================= */
 
-        await fetch("https://wasenderapi.com/api/send-message", {
+        const waResponse = await fetch("https://wasenderapi.com/api/send-message", {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${process.env.WASENDER_API_KEY}`,
@@ -117,8 +117,12 @@ export async function GET(req: Request) {
                 fileName: `attendance-${today}.pdf`,
             }),
         });
-
-        return NextResponse.json({ success: true });
+        const waText = await waResponse.text();
+        return NextResponse.json({
+            success: true,
+            waStatus: waResponse.status,
+            waResponse: waText,
+        });
 
     } catch (err) {
         console.error(err);
