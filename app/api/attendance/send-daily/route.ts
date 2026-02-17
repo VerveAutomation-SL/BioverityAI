@@ -10,121 +10,115 @@ export async function GET(req: Request) {
         const key = searchParams.get("key");
         const CRON_SECRET = "BioverityAICronSecret";
 
-        return NextResponse.json({
-            hardcodedSecret: CRON_SECRET,
-            urlKey: key,
-            equal: key === CRON_SECRET
+        if (!org_id) {
+            return NextResponse.json({ error: "Missing org_id" }, { status: 400 });
+        }
+
+        if (key !== CRON_SECRET) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        /* ================= TODAY (SG TIME) ================= */
+        const nowSG = new Date().toLocaleString("en-US", {
+            timeZone: "Asia/Singapore",
         });
 
-        // if (!org_id) {
-        //     return NextResponse.json({ error: "Missing org_id" }, { status: 400 });
-        // }
+        const today = new Date(nowSG).toISOString().slice(0, 10);
 
-        // if (key !== process.env.CRON_SECRET) {
-        //     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        // }
+        const start = `${today}T00:00:00`;
+        const end = `${today}T23:59:59`;
 
-        // const supabase = createClient(
-        //     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        //     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        // );
+        /* ================= GET RECIPIENT ================= */
+        const { data: recipient } = await supabase
+            .from("alert_recipients")
+            .select("phone_number")
+            .eq("org_id", org_id)
+            .single();
 
-        // /* ================= TODAY (SG TIME) ================= */
-        // const nowSG = new Date().toLocaleString("en-US", {
-        //     timeZone: "Asia/Singapore",
-        // });
+        if (!recipient?.phone_number) {
+            return NextResponse.json({ error: "No WhatsApp number found" }, { status: 400 });
+        }
 
-        // const today = new Date(nowSG).toISOString().slice(0, 10);
+        /* ================= FETCH EMPLOYEES ================= */
+        const { data: employees } = await supabase
+            .from("employees")
+            .select("id, full_name, employee_id")
+            .eq("org_id", org_id);
 
-        // const start = `${today}T00:00:00`;
-        // const end = `${today}T23:59:59`;
+        const { data: logs } = await supabase
+            .from("attendance_logs")
+            .select("employee_id")
+            .eq("org_id", org_id)
+            .gte("event_time", start)
+            .lte("event_time", end);
 
-        // /* ================= GET RECIPIENT ================= */
-        // const { data: recipient } = await supabase
-        //     .from("alert_recipients")
-        //     .select("phone_number")
-        //     .eq("org_id", org_id)
-        //     .single();
+        /* ================= GENERATE PDF ================= */
+        const pdf = await PDFDocument.create();
+        const font = await pdf.embedFont(StandardFonts.Helvetica);
 
-        // if (!recipient?.phone_number) {
-        //     return NextResponse.json({ error: "No WhatsApp number found" }, { status: 400 });
-        // }
+        let page = pdf.addPage([595, 842]);
+        let y = 800;
 
-        // /* ================= FETCH EMPLOYEES ================= */
-        // const { data: employees } = await supabase
-        //     .from("employees")
-        //     .select("id, full_name, employee_id")
-        //     .eq("org_id", org_id);
+        const draw = (text: string) => {
+            page.drawText(text, { x: 50, y, size: 11, font });
+            y -= 18;
+        };
 
-        // const { data: logs } = await supabase
-        //     .from("attendance_logs")
-        //     .select("employee_id")
-        //     .eq("org_id", org_id)
-        //     .gte("event_time", start)
-        //     .lte("event_time", end);
+        draw(`Attendance Report - ${today}`);
+        draw("--------------------------------------------------");
 
-        // /* ================= GENERATE PDF ================= */
-        // const pdf = await PDFDocument.create();
-        // const font = await pdf.embedFont(StandardFonts.Helvetica);
+        employees?.forEach(emp => {
+            const empLogs = logs?.filter(l => l.employee_id === emp.id) || [];
+            const status = empLogs.length > 0 ? "Present" : "Absent";
+            draw(`${emp.full_name} (${emp.employee_id}) - ${status}`);
+        });
 
-        // let page = pdf.addPage([595, 842]);
-        // let y = 800;
+        const pdfBytes = await pdf.save();
 
-        // const draw = (text: string) => {
-        //     page.drawText(text, { x: 50, y, size: 11, font });
-        //     y -= 18;
-        // };
+        /* ================= UPLOAD TO STORAGE ================= */
+        const filePath = `${org_id}/attendance-${today}.pdf`;
 
-        // draw(`Attendance Report - ${today}`);
-        // draw("--------------------------------------------------");
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("attendance-reports")
+            .upload(filePath, pdfBytes, {
+                contentType: "application/pdf",
+                upsert: true,
+            });
 
-        // employees?.forEach(emp => {
-        //     const empLogs = logs?.filter(l => l.employee_id === emp.id) || [];
-        //     const status = empLogs.length > 0 ? "Present" : "Absent";
-        //     draw(`${emp.full_name} (${emp.employee_id}) - ${status}`);
-        // });
+        if (uploadError) {
+            console.error("UPLOAD ERROR:", uploadError);
+            return NextResponse.json({ error: uploadError.message }, { status: 500 });
+        }
 
-        // const pdfBytes = await pdf.save();
+        console.log("UPLOAD SUCCESS:", uploadData);
 
-        // /* ================= UPLOAD TO STORAGE ================= */
-        // const filePath = `${org_id}/attendance-${today}.pdf`;
+        const { data: publicUrlData } = supabase.storage
+            .from("attendance-reports")
+            .getPublicUrl(filePath);
 
-        // const { data: uploadData, error: uploadError } = await supabase.storage
-        //     .from("attendance-reports")
-        //     .upload(filePath, pdfBytes, {
-        //         contentType: "application/pdf",
-        //         upsert: true,
-        //     });
+        const publicUrl = publicUrlData.publicUrl;
 
-        // if (uploadError) {
-        //     console.error("UPLOAD ERROR:", uploadError);
-        //     return NextResponse.json({ error: uploadError.message }, { status: 500 });
-        // }
+        /* ================= SEND WHATSAPP DOCUMENT ================= */
 
-        // console.log("UPLOAD SUCCESS:", uploadData);
+        await fetch("https://wasenderapi.com/api/send-message", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${process.env.WASENDER_API_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                to: recipient.phone_number.replace("+", ""),
+                documentUrl: publicUrl,
+                fileName: `attendance-${today}.pdf`,
+            }),
+        });
 
-        // const { data: publicUrlData } = supabase.storage
-        //     .from("attendance-reports")
-        //     .getPublicUrl(filePath);
-
-        // const publicUrl = publicUrlData.publicUrl;
-
-        // /* ================= SEND WHATSAPP DOCUMENT ================= */
-
-        // await fetch("https://wasenderapi.com/api/send-message", {
-        //     method: "POST",
-        //     headers: {
-        //         Authorization: `Bearer ${process.env.WASENDER_API_KEY}`,
-        //         "Content-Type": "application/json",
-        //     },
-        //     body: JSON.stringify({
-        //         to: recipient.phone_number.replace("+", ""),
-        //         documentUrl: publicUrl,
-        //         fileName: `attendance-${today}.pdf`,
-        //     }),
-        // });
-
-        // return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true });
 
     } catch (err) {
         console.error(err);
