@@ -150,7 +150,7 @@ export default function AlertsPage() {
             </div>
           </div>
           <p className="text-slate-600 text-lg ml-15">
-            Configure who will receive real-time alerts and notifications
+            Configure who will receive the real-time alerts and notifications
           </p>
         </div>
 
