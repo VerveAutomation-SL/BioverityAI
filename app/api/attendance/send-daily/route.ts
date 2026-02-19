@@ -292,13 +292,28 @@ export async function GET(req: Request) {
         const zone2X = zone1X + zone1W + 20;
         const zone2W = zone1W;
 
+        // ── Shared legend centred at bottom (covers both pie + bar) ──
+        const sharedLegY  = 35;
+        const legItems    = [
+            { label: `Present (${presentCount})`, colour: C.green  },
+            { label: `Absent (${absentCount})`,   colour: C.danger },
+        ];
+        const legBoxSize  = 13;
+        const legTextGap  = 6;
+        const legItemGap  = 35;
+        const legTotalW   = legItems.reduce((sum, l) => sum + legBoxSize + legTextGap + fontReg.widthOfTextAtSize(l.label, 11), 0) + legItemGap * (legItems.length - 1);
+        let legCurX = (pageW - legTotalW) / 2;
+        legItems.forEach((l) => {
+            rect(page1, legCurX, sharedLegY, legBoxSize, legBoxSize, l.colour);
+            page1.drawText(l.label, { x: legCurX + legBoxSize + legTextGap, y: sharedLegY + 2, size: 11, font: fontReg, color: C.dark });
+            legCurX += legBoxSize + legTextGap + fontReg.widthOfTextAtSize(l.label, 11) + legItemGap;
+        });
+
         // ── Zone 1: Pie chart ──
-        // Title at y=365, pie centre at y=255, legend at y=170 approx
-        // All safely between footer(22) and divider(382)
         const pieTitleY = dividerY - 15;  // 367
         const pie1CX    = zone1X + zone1W / 2;
-        const pie1CY    = 250;   // FIXED hardcoded — safe absolute y on the page
-        const pie1R     = 70;
+        const pie1CY    = 215;   // lower (was 250)
+        const pie1R     = 90;    // bigger (was 70)
 
         const pieTitleStr = "Present vs Absent";
         const pieTitleW   = fontBold.widthOfTextAtSize(pieTitleStr, 11);
@@ -309,32 +324,14 @@ export async function GET(req: Request) {
             { value: absentCount,  colour: C.danger },
         ]);
 
-        // Legend below pie: starts at pie1CY - pie1R - 16 = 164
-        const pieLegY = pie1CY - pie1R - 16;
-        [
-            { label: `Present (${presentCount})`, colour: C.green  },
-            { label: `Absent (${absentCount})`,   colour: C.danger },
-        ].forEach((l, i) => {
-            const lx = pie1CX - 60;
-            const ly = pieLegY - i * 20;
-            rect(page1, lx, ly, 12, 12, l.colour);
-            page1.drawText(l.label, { x: lx + 17, y: ly + 2, size: 10, font: fontReg, color: C.dark });
-        });
-
-        // ── Zone 2: Bar chart ──
+        // ── Zone 2: Bar chart (no legend — shared legend at bottom) ──
         const barTitleStr = "Attendance by Department";
         const barTitleW   = fontBold.widthOfTextAtSize(barTitleStr, 11);
         page1.drawText(barTitleStr, { x: zone2X + (zone2W - barTitleW) / 2, y: pieTitleY, size: 11, font: fontBold, color: C.dark });
 
-        const barLegY = pieTitleY - 18;
-        rect(page1, zone2X,      barLegY, 11, 11, C.green);
-        page1.drawText("Present", { x: zone2X + 14, y: barLegY + 1, size: 8, font: fontReg, color: C.dark });
-        rect(page1, zone2X + 70, barLegY, 11, 11, C.danger);
-        page1.drawText("Absent",  { x: zone2X + 84, y: barLegY + 1, size: 8, font: fontReg, color: C.dark });
-
-        // Bar chart: bottom at y=45, top at barLegY-10
-        const barBotY = 45;
-        const barTopY = barLegY - 10;
+        // Bar chart: bottom sits just above shared legend, top just below title
+        const barBotY = sharedLegY + 28;
+        const barTopY = pieTitleY - 15;
         drawBarChart(page1, zone2X, barBotY, zone2W, barTopY - barBotY, deptBars, deptMaxVal, fontReg, 9, C.green, C.danger);
 
         // Footer page 1
