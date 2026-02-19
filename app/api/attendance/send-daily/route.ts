@@ -151,7 +151,7 @@ export async function GET(req: Request) {
 
         const { data: webLogs } = await supabase
             .from("web_attendance_logs")
-            .select("employee_id, check_in_time, check_out_time, status, attendance_mode")
+            .select("employee_id, check_in_time, check_out_time, status, attendance_mode, check_in_address, check_out_address")
             .eq("attendance_date", today)
             .in("employee_id", (employees ?? []).map(e => e.id));
 
@@ -159,40 +159,73 @@ export async function GET(req: Request) {
 
         type EmpRecord = {
             id: string; full_name: string; employee_id: string; department: string;
-            checkIn: string | null; checkOut: string | null; method: string;
+            checkIn: string | null; checkInLoc: string | null;
+            checkOut: string | null; checkOutLoc: string | null;
             workingHours: string | null; status: "Present" | "Absent";
+            webCount: number; bioCount2: number;
         };
 
-        const records: EmpRecord[] = (employees ?? []).sort((a, b) => a.employee_id.localeCompare(b.employee_id, undefined, { numeric: true, sensitivity: 'base' })).map(emp => {
+        const fmtTime = (ts: string | null) => ts
+            ? new Date(ts).toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Singapore" })
+            : null;
+
+        const calcHours = (cinMs: number | null, coutMs: number | null) => {
+            if (!cinMs || !coutMs) return null;
+            const diff = coutMs - cinMs;
+            if (diff <= 0) return null;
+            return `${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`;
+        };
+
+        const records: EmpRecord[] = (employees ?? []).sort((a, b) => a.employee_id.localeCompare(b.employee_id, undefined, { numeric: true, sensitivity: "base" })).map(emp => {
+            // Gather ALL events for this employee from both tables into one list
+            type Event = { ts: Date; timeStr: string; location: string; source: "web" | "bio"; };
+            const events: Event[] = [];
+
             const web = (webLogs ?? []).find(l => l.employee_id === emp.id);
             if (web) {
-                const fmt = (ts: string | null) => ts ? new Date(ts).toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Singapore" }) : null;
-                const calcHours = (cin: string | null, cout: string | null) => {
-                    if (!cin || !cout) return null;
-                    const diffMs = new Date(cout).getTime() - new Date(cin).getTime();
-                    if (diffMs <= 0) return null;
-                    const h = Math.floor(diffMs / 3600000);
-                    const m = Math.floor((diffMs % 3600000) / 60000);
-                    return `${h}h ${m}m`;
+                const extractPostal = (addr: string | null) => {
+                    if (!addr) return "WEB";
+                    const match = addr.match(/\b(\d{6})\b/);
+                    return match ? match[1] : "WEB";
                 };
-                return { ...emp, checkIn: fmt(web.check_in_time), checkOut: fmt(web.check_out_time), method: web.attendance_mode ?? "Web", workingHours: calcHours(web.check_in_time, web.check_out_time), status: "Present" as const };
+                if (web.check_in_time)  events.push({ ts: new Date(web.check_in_time),  timeStr: fmtTime(web.check_in_time)!,  location: extractPostal(web.check_in_address),  source: "web" });
+                if (web.check_out_time) events.push({ ts: new Date(web.check_out_time), timeStr: fmtTime(web.check_out_time)!, location: extractPostal(web.check_out_address), source: "web" });
             }
+
             const bio = (bioLogs ?? []).filter(l => l.employee_id === emp.id);
-            if (bio.length > 0) {
-                const sorted = bio.map(l => new Date(l.event_time)).sort((a, b) => a.getTime() - b.getTime());
-                const fmt = (d: Date) => d.toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Singapore" });
-                const diffMs2 = sorted.length > 1 ? sorted[sorted.length - 1].getTime() - sorted[0].getTime() : 0;
-                const wh2 = diffMs2 > 0 ? `${Math.floor(diffMs2/3600000)}h ${Math.floor((diffMs2%3600000)/60000)}m` : null;
-                return { ...emp, checkIn: fmt(sorted[0]), checkOut: sorted.length > 1 ? fmt(sorted[sorted.length - 1]) : null, method: "Biometric", workingHours: wh2, status: "Present" as const };
+            bio.forEach(l => {
+                events.push({ ts: new Date(l.event_time), timeStr: fmtTime(l.event_time)!, location: "Office", source: "bio" });
+            });
+
+            if (events.length === 0) {
+                return { ...emp, checkIn: null, checkInLoc: null, checkOut: null, checkOutLoc: null, workingHours: null, status: "Absent" as const, webCount: 0, bioCount2: 0 };
             }
-            return { ...emp, checkIn: null, checkOut: null, method: "–", workingHours: null, status: "Absent" as const };
+
+            events.sort((a, b) => a.ts.getTime() - b.ts.getTime());
+            const first = events[0];
+            const last  = events[events.length - 1];
+            const hasCheckOut = events.length > 1;
+
+            const wh = calcHours(first.ts.getTime(), hasCheckOut ? last.ts.getTime() : null);
+
+            return {
+                ...emp,
+                checkIn:     first.timeStr,
+                checkInLoc:  first.location,
+                checkOut:    hasCheckOut ? last.timeStr : null,
+                checkOutLoc: hasCheckOut ? last.location : null,
+                workingHours: wh,
+                status: "Present" as const,
+                webCount: web ? 1 : 0,
+                bioCount2: bio.length > 0 ? 1 : 0,
+            };
         });
 
         const totalEmp     = records.length;
         const presentCount = records.filter(r => r.status === "Present").length;
         const absentCount  = totalEmp - presentCount;
-        const webCount     = records.filter(r => r.method !== "Biometric" && r.method !== "–").length;
-        const bioCount     = records.filter(r => r.method === "Biometric").length;
+        const webCount     = records.filter(r => r.webCount > 0).length;
+        const bioCount     = records.filter(r => r.bioCount2 > 0).length;
 
         const allDepts = Array.from(new Set((employees ?? []).map(e => e.department).filter(Boolean)));
         const deptBars = allDepts.map(dept => ({
@@ -355,15 +388,14 @@ export async function GET(req: Request) {
 
         const tY   = pageH - 115;
         const cols = [
-            { label: "#",           w: 30  },
-            { label: "Employee ID", w: 85  },
-            { label: "Full Name",   w: 170 },
-            { label: "Department",  w: 120 },
-            { label: "Status",      w: 65  },
-            { label: "Check-In",    w: 75  },
-            { label: "Check-Out",   w: 75  },
-            { label: "Hrs Worked",  w: 65  },
-            { label: "Method",      w: 75  },
+            { label: "#",              w: 28  },
+            { label: "Employee ID",    w: 80  },
+            { label: "Full Name",      w: 150 },
+            { label: "Department",     w: 110 },
+            { label: "Status",         w: 58  },
+            { label: "Check-In",       w: 110 },
+            { label: "Check-Out",      w: 110 },
+            { label: "Hours",          w: 56  },
         ];
         const totalColW = cols.reduce((s, c) => s + c.w, 0);
         const tableX    = (pageW - totalColW) / 2;
@@ -399,7 +431,9 @@ export async function GET(req: Request) {
         records.forEach((rec, idx) => {
             if (rowY - rowH < 30) addNewTablePage();
             rect(currentPage, tableX, rowY - rowH, totalColW, rowH, idx % 2 === 0 ? C.rowAlt : C.white);
-            const cells = [String(idx + 1), rec.employee_id, rec.full_name, rec.department ?? "–", rec.status, rec.checkIn ?? "–", rec.checkOut ?? "–", rec.workingHours ?? "–", rec.method];
+            const cinStr  = rec.checkIn  ? `${rec.checkIn} / ${rec.checkInLoc  ?? "–"}` : "–";
+            const coutStr = rec.checkOut ? `${rec.checkOut} / ${rec.checkOutLoc ?? "–"}` : "–";
+            const cells = [String(idx + 1), rec.employee_id, rec.full_name, rec.department ?? "–", rec.status, cinStr, coutStr, rec.workingHours ?? "–"];
             let cx4 = tableX;
             cells.forEach((cell, ci) => {
                 const col  = cols[ci];
