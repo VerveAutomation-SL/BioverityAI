@@ -292,21 +292,23 @@ export async function GET(req: Request) {
         const zone2X = zone1X + zone1W + 20;
         const zone2W = zone1W;
 
-        // ── Shared legend centred at bottom (covers both pie + bar) ──
+        // ── Legend: bottom-left under pie, aligned with bar chart baseline ──
+        // barBotY is defined below as sharedLegY + 28; we replicate that value here
+        // so the legend top sits exactly at the bar chart's horizontal baseline
         const sharedLegY  = 35;
+        const barBaseline  = sharedLegY + 28; // same as barBotY — the bar chart baseline
         const legItems    = [
             { label: `Present (${presentCount})`, colour: C.green  },
             { label: `Absent (${absentCount})`,   colour: C.danger },
         ];
-        const legBoxSize  = 13;
+        const legBoxSize  = 12;
         const legTextGap  = 6;
-        const legItemGap  = 35;
-        const legTotalW   = legItems.reduce((sum, l) => sum + legBoxSize + legTextGap + fontReg.widthOfTextAtSize(l.label, 11), 0) + legItemGap * (legItems.length - 1);
-        let legCurX = (pageW - legTotalW) / 2;
-        legItems.forEach((l) => {
-            rect(page1, legCurX, sharedLegY, legBoxSize, legBoxSize, l.colour);
-            page1.drawText(l.label, { x: legCurX + legBoxSize + legTextGap, y: sharedLegY + 2, size: 11, font: fontReg, color: C.dark });
-            legCurX += legBoxSize + legTextGap + fontReg.widthOfTextAtSize(l.label, 11) + legItemGap;
+        const legRowGap   = 18; // vertical gap between legend rows
+        // Position: left edge of zone1 (under pie), top row at barBaseline
+        legItems.forEach((l, i) => {
+            const ly = barBaseline - i * legRowGap;
+            rect(page1, zone1X, ly, legBoxSize, legBoxSize, l.colour);
+            page1.drawText(l.label, { x: zone1X + legBoxSize + legTextGap, y: ly + 2, size: 10, font: fontReg, color: C.dark });
         });
 
         // ── Zone 1: Pie chart ──
