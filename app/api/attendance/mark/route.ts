@@ -2,30 +2,72 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 
 export async function POST(req: Request) {
-  const { primary_org_id, test_org_id, employee_id } = await req.json();
+  try {
+    const { primary_org_id, test_org_id, employee_id } = await req.json();
 
-  if (!employee_id || !primary_org_id || !test_org_id) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!employee_id || !primary_org_id || !test_org_id) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // 1️⃣ Find employee + org
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("org_id, full_name")
+      .eq("id", employee_id)
+      .in("org_id", [primary_org_id, test_org_id])
+      .single();
+
+    if (!employee) {
+      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+    }
+
+    const now = new Date();
+    const isoTime = now.toISOString();
+    const formattedTime = now.toLocaleTimeString("en-SG", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // 2️⃣ Insert attendance log
+    await supabase.from("attendance_logs").insert({
+      org_id: employee.org_id,
+      employee_id,
+      event_time: isoTime,
+    });
+
+    // 3️⃣ Get alert recipient for this org
+    const { data: recipient } = await supabase
+      .from("alert_recipients")
+      .select("phone_number")
+      .eq("org_id", employee.org_id)
+      .single();
+
+    if (recipient?.phone_number) {
+      // 4️⃣ Send WhatsApp Alert
+      await fetch("https://wasenderapi.com/api/send-message", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer YOUR_WASENDER_KEY_HERE`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: recipient.phone_number.replace("+", ""),
+          text: `Greetings from Bioverity AI
+
+${employee.full_name} checked in at ${formattedTime}
+Method: Finger Vein Device
+Check-in location detected as Office`,
+        }),
+      });
+    }
+
+    return NextResponse.json({
+      status: "logged",
+      org_id: employee.org_id,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Failed to process check-in" }, { status: 500 });
   }
-
-  // ✅ Check which org this employee belongs to
-  const { data: employee } = await supabase
-    .from("employees")
-    .select("org_id")
-    .eq("id", employee_id)
-    .in("org_id", [primary_org_id, test_org_id])
-    .single();
-
-  if (!employee) {
-    return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-  }
-
-  // ✅ Log attendance for the correct org
-  await supabase.from("attendance_logs").insert({
-    org_id: employee.org_id,
-    employee_id,
-    event_time: new Date().toISOString(),
-  });
-
-  return NextResponse.json({ status: "logged", org_id: employee.org_id });
 }
