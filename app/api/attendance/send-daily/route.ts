@@ -160,22 +160,32 @@ export async function GET(req: Request) {
         type EmpRecord = {
             id: string; full_name: string; employee_id: string; department: string;
             checkIn: string | null; checkOut: string | null; method: string;
-            status: "Present" | "Absent";
+            workingHours: string | null; status: "Present" | "Absent";
         };
 
         const records: EmpRecord[] = (employees ?? []).sort((a, b) => a.employee_id.localeCompare(b.employee_id, undefined, { numeric: true, sensitivity: 'base' })).map(emp => {
             const web = (webLogs ?? []).find(l => l.employee_id === emp.id);
             if (web) {
                 const fmt = (ts: string | null) => ts ? new Date(ts).toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Singapore" }) : null;
-                return { ...emp, checkIn: fmt(web.check_in_time), checkOut: fmt(web.check_out_time), method: web.attendance_mode ?? "Web", status: "Present" as const };
+                const calcHours = (cin: string | null, cout: string | null) => {
+                    if (!cin || !cout) return null;
+                    const diffMs = new Date(cout).getTime() - new Date(cin).getTime();
+                    if (diffMs <= 0) return null;
+                    const h = Math.floor(diffMs / 3600000);
+                    const m = Math.floor((diffMs % 3600000) / 60000);
+                    return `${h}h ${m}m`;
+                };
+                return { ...emp, checkIn: fmt(web.check_in_time), checkOut: fmt(web.check_out_time), method: web.attendance_mode ?? "Web", workingHours: calcHours(web.check_in_time, web.check_out_time), status: "Present" as const };
             }
             const bio = (bioLogs ?? []).filter(l => l.employee_id === emp.id);
             if (bio.length > 0) {
                 const sorted = bio.map(l => new Date(l.event_time)).sort((a, b) => a.getTime() - b.getTime());
                 const fmt = (d: Date) => d.toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Singapore" });
-                return { ...emp, checkIn: fmt(sorted[0]), checkOut: sorted.length > 1 ? fmt(sorted[sorted.length - 1]) : null, method: "Biometric", status: "Present" as const };
+                const diffMs2 = sorted.length > 1 ? sorted[sorted.length - 1].getTime() - sorted[0].getTime() : 0;
+                const wh2 = diffMs2 > 0 ? `${Math.floor(diffMs2/3600000)}h ${Math.floor((diffMs2%3600000)/60000)}m` : null;
+                return { ...emp, checkIn: fmt(sorted[0]), checkOut: sorted.length > 1 ? fmt(sorted[sorted.length - 1]) : null, method: "Biometric", workingHours: wh2, status: "Present" as const };
             }
-            return { ...emp, checkIn: null, checkOut: null, method: "–", status: "Absent" as const };
+            return { ...emp, checkIn: null, checkOut: null, method: "–", workingHours: null, status: "Absent" as const };
         });
 
         const totalEmp     = records.length;
@@ -352,7 +362,8 @@ export async function GET(req: Request) {
             { label: "Status",      w: 65  },
             { label: "Check-In",    w: 75  },
             { label: "Check-Out",   w: 75  },
-            { label: "Method",      w: 80  },
+            { label: "Hrs Worked",  w: 65  },
+            { label: "Method",      w: 75  },
         ];
         const totalColW = cols.reduce((s, c) => s + c.w, 0);
         const tableX    = (pageW - totalColW) / 2;
@@ -388,7 +399,7 @@ export async function GET(req: Request) {
         records.forEach((rec, idx) => {
             if (rowY - rowH < 30) addNewTablePage();
             rect(currentPage, tableX, rowY - rowH, totalColW, rowH, idx % 2 === 0 ? C.rowAlt : C.white);
-            const cells = [String(idx + 1), rec.employee_id, rec.full_name, rec.department ?? "–", rec.status, rec.checkIn ?? "–", rec.checkOut ?? "–", rec.method];
+            const cells = [String(idx + 1), rec.employee_id, rec.full_name, rec.department ?? "–", rec.status, rec.checkIn ?? "–", rec.checkOut ?? "–", rec.workingHours ?? "–", rec.method];
             let cx4 = tableX;
             cells.forEach((cell, ci) => {
                 const col  = cols[ci];
