@@ -23,15 +23,6 @@ function rect(
     page.drawRectangle({ x, y, width: w, height: h, color: colour });
 }
 
-/**
- * Pie chart using ONLY drawCircle + drawRectangle (scanline approach).
- * No SVG paths — eliminates all pdf-lib SVG rendering issues.
- *
- * Approach:
- * - Draw each vertical column inside the circle
- * - Split each column proportionally between green (bottom) and red (top)
- * - Then draw a white border circle on top
- */
 function drawPieChart(
     page: ReturnType<PDFDocument["addPage"]>,
     cx: number, cy: number, radius: number,
@@ -42,45 +33,40 @@ function drawPieChart(
 
     const nonZero = slices.filter(sl => sl.value > 0);
 
-    // Only one slice — just draw a solid circle
     if (nonZero.length === 1) {
         page.drawCircle({ x: cx, y: cy, size: radius, color: nonZero[0].colour });
         page.drawCircle({ x: cx, y: cy, size: radius, borderColor: rgb(1, 1, 1), borderWidth: 2 });
         return;
     }
 
-    const colourA = slices[0].colour; // present = green (fills from bottom)
-    const colourB = slices[1].colour; // absent  = red   (fills from top)
-    const fracA   = slices[0].value / total;
-    const fracB   = slices[1].value / total;
+    const colourA = slices[0].colour;
+    const colourB = slices[1].colour;
+    const fracA = slices[0].value / total;
+    const fracB = slices[1].value / total;
 
-    // Scanline: one thin rectangle per column
     const numCols = Math.ceil(radius * 2) + 1;
     for (let i = 0; i < numCols; i++) {
-        const xOff    = -radius + (i / (numCols - 1)) * 2 * radius;
-        const xPos    = cx + xOff;
-        const halfH   = Math.sqrt(Math.max(0, radius * radius - xOff * xOff));
+        const xOff = -radius + (i / (numCols - 1)) * 2 * radius;
+        const xPos = cx + xOff;
+        const halfH = Math.sqrt(Math.max(0, radius * radius - xOff * xOff));
         if (halfH < 0.5) continue;
 
-        const yBot  = cy - halfH;
-        const yTop  = cy + halfH;
-        const colH  = yTop - yBot;
-        const colW  = (2 * radius / numCols) + 1.5; // slight overlap avoids gaps
+        const yBot = cy - halfH;
+        const yTop = cy + halfH;
+        const colH = yTop - yBot;
+        const colW = (2 * radius / numCols) + 1.5;
 
-        const hA = colH * fracA; // height for green (present)
-        const hB = colH * fracB; // height for red (absent)
+        const hA = colH * fracA;
+        const hB = colH * fracB;
 
-        // Draw green on bottom portion
         if (hA > 0) {
-            page.drawRectangle({ x: xPos - colW / 2, y: yBot,      width: colW, height: hA + 0.5, color: colourA });
+            page.drawRectangle({ x: xPos - colW / 2, y: yBot, width: colW, height: hA + 0.5, color: colourA });
         }
-        // Draw red on top portion
         if (hB > 0) {
             page.drawRectangle({ x: xPos - colW / 2, y: yBot + hA, width: colW, height: hB + 0.5, color: colourB });
         }
     }
 
-    // White border ring on top to make it look like a proper circle
     page.drawCircle({ x: cx, y: cy, size: radius, borderColor: rgb(1, 1, 1), borderWidth: 3 });
 }
 
@@ -96,18 +82,18 @@ function drawBarChart(
 ) {
     if (bars.length === 0 || maxVal === 0) return;
     const groupW = chartW / bars.length;
-    const barW   = Math.min(groupW * 0.6, 50);
-    const gap    = (groupW - barW) / 2;
+    const barW = Math.min(groupW * 0.6, 50);
+    const gap = (groupW - barW) / 2;
 
     page.drawLine({ start: { x, y }, end: { x: x + chartW, y }, thickness: 1, color: hex("#cccccc") });
 
     bars.forEach((bar, i) => {
-        const bX       = x + i * groupW + gap;
+        const bX = x + i * groupW + gap;
         const presentH = (bar.presentVal / maxVal) * chartH;
-        const absentH  = (bar.absentVal  / maxVal) * chartH;
+        const absentH = (bar.absentVal / maxVal) * chartH;
 
-        if (presentH > 0) page.drawRectangle({ x: bX, y,               width: barW, height: presentH, color: green  });
-        if (absentH  > 0) page.drawRectangle({ x: bX, y: y + presentH, width: barW, height: absentH,  color: danger });
+        if (presentH > 0) page.drawRectangle({ x: bX, y, width: barW, height: presentH, color: green });
+        if (absentH > 0) page.drawRectangle({ x: bX, y: y + presentH, width: barW, height: absentH, color: danger });
 
         const totalStr = String(bar.totalVal);
         const tw = font.widthOfTextAtSize(totalStr, fontSize);
@@ -122,9 +108,9 @@ export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
         const org_id = searchParams.get("org_id");
-        const key    = searchParams.get("key");
+        const key = searchParams.get("key");
 
-        const CRON_SECRET  = "BioverityAICronSecret";
+        const CRON_SECRET = "BioverityAICronSecret";
         const WASENDER_KEY = "45c4351855553c63e57fdca99f068b61d309e8d4537a5da029666516b9cca618";
 
         if (!org_id) return NextResponse.json({ error: "Missing org_id" }, { status: 400 });
@@ -138,13 +124,16 @@ export async function GET(req: Request) {
         const nowSG = new Date().toLocaleString("en-US", { timeZone: "Asia/Singapore" });
         const today = new Date(nowSG).toISOString().slice(0, 10);
         const start = `${today}T00:00:00`;
-        const end   = `${today}T23:59:59`;
+        const end = `${today}T23:59:59`;
 
-        const { data: recipient } = await supabase.from("alert_recipients").select("phone_number").eq("org_id", org_id).maybeSingle();
-        const recipientPhone: string | null = recipient?.phone_number ?? null;
+        // ── FIXED: fetch ALL recipients instead of .maybeSingle() ──
+        const { data: recipients } = await supabase
+            .from("alert_recipients")
+            .select("phone_number")
+            .eq("org_id", org_id);
 
         const { data: orgProfile } = await supabase.from("profiles").select("full_name, organization_logo").eq("org_id", org_id).limit(1).maybeSingle();
-        const orgName    = orgProfile?.full_name         ?? "Organisation";
+        const orgName = orgProfile?.full_name ?? "Organisation";
         const orgLogoUrl = orgProfile?.organization_logo ?? null;
 
         const { data: employees } = await supabase.from("employees").select("id, full_name, employee_id, department").eq("org_id", org_id);
@@ -177,7 +166,6 @@ export async function GET(req: Request) {
         };
 
         const records: EmpRecord[] = (employees ?? []).sort((a, b) => a.employee_id.localeCompare(b.employee_id, undefined, { numeric: true, sensitivity: "base" })).map(emp => {
-            // Gather ALL events for this employee from both tables into one list
             type Event = { ts: Date; timeStr: string; location: string; source: "web" | "bio"; };
             const events: Event[] = [];
 
@@ -188,7 +176,7 @@ export async function GET(req: Request) {
                     const match = addr.match(/\b(\d{6})\b/);
                     return match ? match[1] : "WEB";
                 };
-                if (web.check_in_time)  events.push({ ts: new Date(web.check_in_time),  timeStr: fmtTime(web.check_in_time)!,  location: extractPostal(web.check_in_address),  source: "web" });
+                if (web.check_in_time) events.push({ ts: new Date(web.check_in_time), timeStr: fmtTime(web.check_in_time)!, location: extractPostal(web.check_in_address), source: "web" });
                 if (web.check_out_time) events.push({ ts: new Date(web.check_out_time), timeStr: fmtTime(web.check_out_time)!, location: extractPostal(web.check_out_address), source: "web" });
             }
 
@@ -203,16 +191,16 @@ export async function GET(req: Request) {
 
             events.sort((a, b) => a.ts.getTime() - b.ts.getTime());
             const first = events[0];
-            const last  = events[events.length - 1];
+            const last = events[events.length - 1];
             const hasCheckOut = events.length > 1;
 
             const wh = calcHours(first.ts.getTime(), hasCheckOut ? last.ts.getTime() : null);
 
             return {
                 ...emp,
-                checkIn:     first.timeStr,
-                checkInLoc:  first.location,
-                checkOut:    hasCheckOut ? last.timeStr : null,
+                checkIn: first.timeStr,
+                checkInLoc: first.location,
+                checkOut: hasCheckOut ? last.timeStr : null,
                 checkOutLoc: hasCheckOut ? last.location : null,
                 workingHours: wh,
                 status: "Present" as const,
@@ -221,42 +209,42 @@ export async function GET(req: Request) {
             };
         });
 
-        const totalEmp     = records.length;
+        const totalEmp = records.length;
         const presentCount = records.filter(r => r.status === "Present").length;
-        const absentCount  = totalEmp - presentCount;
-        const webCount     = records.filter(r => r.webCount > 0).length;
-        const bioCount     = records.filter(r => r.bioCount2 > 0).length;
+        const absentCount = totalEmp - presentCount;
+        const webCount = records.filter(r => r.webCount > 0).length;
+        const bioCount = records.filter(r => r.bioCount2 > 0).length;
 
         const allDepts = Array.from(new Set((employees ?? []).map(e => e.department).filter(Boolean)));
         const deptBars = allDepts.map(dept => ({
-            label:      dept.length > 10 ? dept.slice(0, 9) + "…" : dept,
+            label: dept.length > 10 ? dept.slice(0, 9) + "…" : dept,
             presentVal: records.filter(r => r.department === dept && r.status === "Present").length,
-            absentVal:  records.filter(r => r.department === dept && r.status === "Absent").length,
-            totalVal:   records.filter(r => r.department === dept).length,
+            absentVal: records.filter(r => r.department === dept && r.status === "Absent").length,
+            totalVal: records.filter(r => r.department === dept).length,
         }));
         const deptMaxVal = Math.max(...deptBars.map(b => b.totalVal), 1);
 
         /* ── PDF ── */
-        const pdf    = await PDFDocument.create();
-        const pageW  = 842;
-        const pageH  = 595;
-        const M      = 40;
+        const pdf = await PDFDocument.create();
+        const pageW = 842;
+        const pageH = 595;
+        const M = 40;
 
         const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
-        const fontReg  = await pdf.embedFont(StandardFonts.Helvetica);
+        const fontReg = await pdf.embedFont(StandardFonts.Helvetica);
 
         const C = {
-            primary:   hex("#0d6efd"),
-            danger:    hex("#dc3545"),
-            white:     rgb(1, 1, 1),
-            dark:      hex("#212529"),
-            headerBg:  hex("#f1f3f5"),
+            primary: hex("#0d6efd"),
+            danger: hex("#dc3545"),
+            white: rgb(1, 1, 1),
+            dark: hex("#212529"),
+            headerBg: hex("#f1f3f5"),
             headerTxt: hex("#495057"),
-            green:     hex("#198754"),
-            purple:    hex("#6f42c1"),
-            cyan:      hex("#0dcaf0"),
-            rowAlt:    hex("#f0f4ff"),
-            divider:   hex("#dee2e6"),
+            green: hex("#198754"),
+            purple: hex("#6f42c1"),
+            cyan: hex("#0dcaf0"),
+            rowAlt: hex("#f0f4ff"),
+            divider: hex("#dee2e6"),
         };
 
         const drawPageHeader = async (pg: ReturnType<PDFDocument["addPage"]>, title: string) => {
@@ -308,13 +296,13 @@ export async function GET(req: Request) {
         await drawPageHeader(page1, "BioVerity AI Attendance Report");
 
         // ── KPI Cards ──
-        const kpiY  = pageH - 150;
+        const kpiY = pageH - 150;
         const cards = [
-            { label: "Total Employees", value: totalEmp,     colour: C.primary },
-            { label: "Present",          value: presentCount, colour: C.green   },
-            { label: "Absent",           value: absentCount,  colour: C.danger  },
-            { label: "Via Web",          value: webCount,     colour: C.cyan    },
-            { label: "Via Biometric",    value: bioCount,     colour: C.purple  },
+            { label: "Total Employees", value: totalEmp, colour: C.primary },
+            { label: "Present", value: presentCount, colour: C.green },
+            { label: "Absent", value: absentCount, colour: C.danger },
+            { label: "Via Web", value: webCount, colour: C.cyan },
+            { label: "Via Biometric", value: bioCount, colour: C.purple },
         ];
         const cardW = (pageW - M * 2 - 16) / cards.length;
         cards.forEach((card, i) => {
@@ -326,7 +314,7 @@ export async function GET(req: Request) {
             page1.drawText(card.label, { x: cx2 + (cardW - lw2) / 2, y: kpiY - 45, size: 8, font: fontReg, color: C.white });
         });
 
-        const dividerY = kpiY - 63;  // y=382
+        const dividerY = kpiY - 63;
         rect(page1, M, dividerY, pageW - M * 2, 1, C.divider);
 
         // ── Chart zones ──
@@ -335,16 +323,16 @@ export async function GET(req: Request) {
         const zone2X = zone1X + zone1W + 20;
         const zone2W = zone1W;
 
-        // ── Legend: one horizontal line, centred under the pie zone ──
+        // ── Legend ──
         const sharedLegY = 55;
-        const legItems   = [
-            { label: `Present (${presentCount})`, colour: C.green  },
-            { label: `Absent (${absentCount})`,   colour: C.danger },
+        const legItems = [
+            { label: `Present (${presentCount})`, colour: C.green },
+            { label: `Absent (${absentCount})`, colour: C.danger },
         ];
         const legBoxSize = 12;
         const legTextGap = 6;
         const legItemGap = 25;
-        const legTotalW  = legItems.reduce((sum, l) => sum + legBoxSize + legTextGap + fontReg.widthOfTextAtSize(l.label, 10), 0) + legItemGap * (legItems.length - 1);
+        const legTotalW = legItems.reduce((sum, l) => sum + legBoxSize + legTextGap + fontReg.widthOfTextAtSize(l.label, 10), 0) + legItemGap * (legItems.length - 1);
         let legCurX = zone1X + (zone1W - legTotalW) / 2;
         legItems.forEach((l) => {
             rect(page1, legCurX, sharedLegY, legBoxSize, legBoxSize, l.colour);
@@ -353,26 +341,25 @@ export async function GET(req: Request) {
         });
 
         // ── Zone 1: Pie chart ──
-        const pieTitleY = dividerY - 15;  // 367
-        const pie1CX    = zone1X + zone1W / 2;
-        const pie1CY    = 215;   // lower (was 250)
-        const pie1R     = 90;    // bigger (was 70)
+        const pieTitleY = dividerY - 15;
+        const pie1CX = zone1X + zone1W / 2;
+        const pie1CY = 215;
+        const pie1R = 90;
 
         const pieTitleStr = "Present vs Absent";
-        const pieTitleW   = fontBold.widthOfTextAtSize(pieTitleStr, 11);
+        const pieTitleW = fontBold.widthOfTextAtSize(pieTitleStr, 11);
         page1.drawText(pieTitleStr, { x: zone1X + (zone1W - pieTitleW) / 2, y: pieTitleY, size: 11, font: fontBold, color: C.dark });
 
         drawPieChart(page1, pie1CX, pie1CY, pie1R, [
-            { value: presentCount, colour: C.green  },
-            { value: absentCount,  colour: C.danger },
+            { value: presentCount, colour: C.green },
+            { value: absentCount, colour: C.danger },
         ]);
 
-        // ── Zone 2: Bar chart (no legend — shared legend at bottom) ──
+        // ── Zone 2: Bar chart ──
         const barTitleStr = "Attendance by Department";
-        const barTitleW   = fontBold.widthOfTextAtSize(barTitleStr, 11);
+        const barTitleW = fontBold.widthOfTextAtSize(barTitleStr, 11);
         page1.drawText(barTitleStr, { x: zone2X + (zone2W - barTitleW) / 2, y: pieTitleY, size: 11, font: fontBold, color: C.dark });
 
-        // Bar chart: bottom sits just above shared legend, top just below title
         const barBotY = sharedLegY + 28;
         const barTopY = pieTitleY - 15;
         drawBarChart(page1, zone2X, barBotY, zone2W, barTopY - barBotY, deptBars, deptMaxVal, fontReg, 9, C.green, C.danger);
@@ -386,19 +373,19 @@ export async function GET(req: Request) {
         const page2 = pdf.addPage([pageW, pageH]);
         await drawPageHeader(page2, "BioVerity AI Employee Attendance Details");
 
-        const tY   = pageH - 115;
+        const tY = pageH - 115;
         const cols = [
-            { label: "#",              w: 28  },
-            { label: "Employee ID",    w: 80  },
-            { label: "Full Name",      w: 150 },
-            { label: "Department",     w: 110 },
-            { label: "Status",         w: 58  },
-            { label: "Check-In",       w: 110 },
-            { label: "Check-Out",      w: 110 },
-            { label: "Hours",          w: 56  },
+            { label: "#", w: 28 },
+            { label: "Employee ID", w: 80 },
+            { label: "Full Name", w: 150 },
+            { label: "Department", w: 110 },
+            { label: "Status", w: 58 },
+            { label: "Check-In", w: 110 },
+            { label: "Check-Out", w: 110 },
+            { label: "Hours", w: 56 },
         ];
         const totalColW = cols.reduce((s, c) => s + c.w, 0);
-        const tableX    = (pageW - totalColW) / 2;
+        const tableX = (pageW - totalColW) / 2;
 
         const drawTableHeader = (pg: ReturnType<PDFDocument["addPage"]>, headerY: number) => {
             rect(pg, tableX, headerY - 20, totalColW, 22, C.primary);
@@ -412,8 +399,8 @@ export async function GET(req: Request) {
 
         drawTableHeader(page2, tY);
 
-        const rowH      = 20;
-        let rowY        = tY - 20;
+        const rowH = 20;
+        let rowY = tY - 20;
         let currentPage = page2;
 
         type PageTableInfo = { pg: ReturnType<PDFDocument["addPage"]>; tableTopY: number; };
@@ -431,16 +418,16 @@ export async function GET(req: Request) {
         records.forEach((rec, idx) => {
             if (rowY - rowH < 30) addNewTablePage();
             rect(currentPage, tableX, rowY - rowH, totalColW, rowH, idx % 2 === 0 ? C.rowAlt : C.white);
-            const cinStr  = rec.checkIn  ? `${rec.checkIn} / ${rec.checkInLoc  ?? "–"}` : "–";
+            const cinStr = rec.checkIn ? `${rec.checkIn} / ${rec.checkInLoc ?? "–"}` : "–";
             const coutStr = rec.checkOut ? `${rec.checkOut} / ${rec.checkOutLoc ?? "–"}` : "–";
             const cells = [String(idx + 1), rec.employee_id, rec.full_name, rec.department ?? "–", rec.status, cinStr, coutStr, rec.workingHours ?? "–"];
             let cx4 = tableX;
             cells.forEach((cell, ci) => {
-                const col  = cols[ci];
+                const col = cols[ci];
                 const isSt = ci === 4;
                 const color = isSt ? (rec.status === "Present" ? C.green : C.danger) : C.dark;
-                const fnt   = isSt ? fontBold : fontReg;
-                const cw    = fnt.widthOfTextAtSize(cell, 9);
+                const fnt = isSt ? fontBold : fontReg;
+                const cw = fnt.widthOfTextAtSize(cell, 9);
                 currentPage.drawText(cell, { x: cx4 + (col.w - cw) / 2, y: rowY - rowH + 6, size: 9, font: fnt, color });
                 cx4 += col.w;
             });
@@ -448,14 +435,14 @@ export async function GET(req: Request) {
             rowY -= rowH;
         });
 
-        // Green border: left + right + bottom (no top)
+        // Green border: left + right + bottom
         pageTableInfos.forEach((info, pageIdx) => {
-            const isLastPage   = pageIdx === pageTableInfos.length - 1;
+            const isLastPage = pageIdx === pageTableInfos.length - 1;
             const tableBottomY = isLastPage ? rowY : 30;
-            const tableTopY2   = info.tableTopY + 22;
-            info.pg.drawLine({ start: { x: tableX,             y: tableBottomY }, end: { x: tableX,             y: tableTopY2 }, thickness: 1.5, color: C.green });
+            const tableTopY2 = info.tableTopY + 22;
+            info.pg.drawLine({ start: { x: tableX, y: tableBottomY }, end: { x: tableX, y: tableTopY2 }, thickness: 1.5, color: C.green });
             info.pg.drawLine({ start: { x: tableX + totalColW, y: tableBottomY }, end: { x: tableX + totalColW, y: tableTopY2 }, thickness: 1.5, color: C.green });
-            info.pg.drawLine({ start: { x: tableX,             y: tableBottomY }, end: { x: tableX + totalColW, y: tableBottomY }, thickness: 1.5, color: C.green });
+            info.pg.drawLine({ start: { x: tableX, y: tableBottomY }, end: { x: tableX + totalColW, y: tableBottomY }, thickness: 1.5, color: C.green });
         });
 
         // Footer on all pages
@@ -482,14 +469,29 @@ export async function GET(req: Request) {
         const { data: publicUrlData } = supabase.storage.from("attendance-reports").getPublicUrl(filePath);
         const publicUrlFresh = `${publicUrlData.publicUrl}?t=${Date.now()}`;
 
-        if (recipientPhone) {
-            const waRes = await fetch("https://www.wasenderapi.com/api/send-message", {
-                method: "POST",
-                headers: { Authorization: `Bearer ${WASENDER_KEY}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ to: recipientPhone.replace("+", ""), documentUrl: publicUrlFresh, fileName: `attendance-${today}.pdf` }),
-            });
-            const waText = await waRes.text();
-            return NextResponse.json({ success: true, pdfUrl: publicUrlFresh, waStatus: waRes.status, waResponse: waText });
+        // ── Send to ALL recipients sequentially with delay ──
+        if (recipients && recipients.length > 0) {
+            const waResults = [];
+            for (const r of recipients) {
+                try {
+                    const waRes = await fetch("https://www.wasenderapi.com/api/send-message", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${WASENDER_KEY}`, "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            to: r.phone_number.replace("+", ""),
+                            documentUrl: publicUrlFresh,
+                            fileName: `attendance-${today}.pdf`,
+                        }),
+                    });
+                    const body = await waRes.text();
+                    waResults.push({ phone: r.phone_number, status: waRes.status, response: body });
+                } catch (e) {
+                    waResults.push({ phone: r.phone_number, status: 500, response: String(e) });
+                }
+                // Wait 6 seconds between sends to respect WaSender's rate limit
+                await new Promise(resolve => setTimeout(resolve, 6000));
+            }
+            return NextResponse.json({ success: true, pdfUrl: publicUrlFresh, waResults });
         }
 
         return NextResponse.json({ success: true, pdfUrl: publicUrlFresh, waStatus: null, waResponse: "No recipient configured — WhatsApp skipped" });
