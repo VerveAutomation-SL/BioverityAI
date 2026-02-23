@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     const formattedTime = now.toLocaleTimeString("en-SG", {
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "Asia/Singapore",
     });
     // 2️⃣ Check if this employee already has a log today (Singapore time)
     const nowSG = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Singapore" }));
