@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, Save, User, Mail, Shield, ImageIcon, Upload, Key, Lock, Globe } from "lucide-react";
 import toast from "react-hot-toast";
+import { supabase } from "@/lib/supabaseClient"; // ✅ ADDED
 
 interface UpdateUserModalProps {
   user: any;
@@ -24,16 +25,16 @@ export default function UpdateUserModal({
   const [allServices, setAllServices] = useState<any[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
-  
+
   // Tuya Configuration State (with region)
   const [tuyaConfig, setTuyaConfig] = useState({
     accessId: "",
     accessSecret: "",
     deviceId: "",
     dpCode: "",
-    region: "sg", // default Singapore
+    region: "sg",
   });
-  
+
   // Track if user already has Door service config
   const [hasDoorConfig, setHasDoorConfig] = useState(false);
 
@@ -43,11 +44,9 @@ export default function UpdateUserModal({
 
   async function fetchServices() {
     try {
-      // Fetch ALL available services from database
       const servicesRes = await fetch("/api/services");
       const servicesData = await servicesRes.json();
 
-      // Fetch user's enabled services
       const userServicesRes = await fetch(`/api/user-services?user_id=${user.id}`);
       const userServicesData = await userServicesRes.json();
 
@@ -58,8 +57,6 @@ export default function UpdateUserModal({
       if (userServicesRes.ok && userServicesData.services) {
         const enabledKeys = userServicesData.services.map((s: any) => s.service_key);
         setSelectedServices(enabledKeys);
-        
-        // Check if user has door_control service configured
         setHasDoorConfig(enabledKeys.includes("door_control"));
       }
     } catch (err) {
@@ -70,21 +67,31 @@ export default function UpdateUserModal({
     }
   }
 
+  // ✅ FIXED: Real Supabase upload instead of blob URL
   async function handleLogoUpload(file: File) {
     setUploadingLogo(true);
-    
+
     try {
-      // Replace with actual Supabase upload logic
       const ext = file.name.split(".").pop();
       const fileName = `logos/${crypto.randomUUID()}.${ext}`;
 
-      // Mock upload - replace with: await supabase.storage.from("products").upload(...)
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const mockUrl = URL.createObjectURL(file);
-      setOrganizationLogo(mockUrl);
+      const { error } = await supabase.storage
+        .from("products")
+        .upload(fileName, file, {
+          contentType: file.type,
+          upsert: false,
+        });
+
+      if (error) throw error;
+
+      const { data } = supabase.storage
+        .from("products")
+        .getPublicUrl(fileName);
+
+      setOrganizationLogo(data.publicUrl); // ✅ permanent public URL
       toast.success("Logo uploaded successfully!");
     } catch (err: any) {
-      console.error("Failed to upload logo");
+      console.error("Failed to upload logo:", err);
       toast.error("Failed to upload logo");
     } finally {
       setUploadingLogo(false);
@@ -99,7 +106,7 @@ export default function UpdateUserModal({
 
     setLoading(true);
     try {
-      // 1️⃣ Update user profile (identity only) - ACTUAL API CALL
+      // 1️⃣ Update user profile
       const userRes = await fetch("/api/users/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -119,7 +126,7 @@ export default function UpdateUserModal({
         return;
       }
 
-      // 2️⃣ Update enabled services - ACTUAL API CALL
+      // 2️⃣ Update enabled services
       const servicesRes = await fetch("/api/user-services/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,18 +143,25 @@ export default function UpdateUserModal({
         return;
       }
 
-      // 3️⃣ Update Door Control service configuration ONLY if door_control is selected AND fields are filled
+      // 3️⃣ Update Door Control config if selected and fields filled
       if (selectedServices.includes("door_control")) {
-        // Check if user actually wants to save config (at least one critical field filled)
-        const wantsToSaveConfig = tuyaConfig.accessId.trim() || tuyaConfig.accessSecret.trim() || tuyaConfig.deviceId.trim();
-        
+        const wantsToSaveConfig =
+          tuyaConfig.accessId.trim() ||
+          tuyaConfig.accessSecret.trim() ||
+          tuyaConfig.deviceId.trim();
+
         if (wantsToSaveConfig) {
-          if (!tuyaConfig.accessId.trim() || !tuyaConfig.accessSecret.trim() || !tuyaConfig.deviceId.trim() || !tuyaConfig.dpCode.trim()) {
+          if (
+            !tuyaConfig.accessId.trim() ||
+            !tuyaConfig.accessSecret.trim() ||
+            !tuyaConfig.deviceId.trim() ||
+            !tuyaConfig.dpCode.trim()
+          ) {
+            toast.error("Please fill all Door Control configuration fields");
             setLoading(false);
             return;
           }
-          
-          // Save the config
+
           const configRes = await fetch("/api/user-services/config", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -171,11 +185,10 @@ export default function UpdateUserModal({
             return;
           }
         }
-        // If wantsToSaveConfig is false, we just skip config API call - service still gets enabled
       }
 
       toast.success("User and services updated successfully!");
-      onUpdated(); // Refresh parent component
+      onUpdated();
       onClose();
     } catch (err) {
       console.error(err);
@@ -195,8 +208,8 @@ export default function UpdateUserModal({
             <User className="w-5 h-5 text-emerald-600" />
             Update User
           </h2>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all"
           >
             <X className="w-5 h-5" />
@@ -205,13 +218,14 @@ export default function UpdateUserModal({
 
         {/* Body */}
         <div className="p-6 space-y-5">
+
           {/* Organization Logo Upload */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-emerald-600" />
               Organization Logo
             </label>
-            
+
             <div className="flex items-center gap-4">
               {organizationLogo ? (
                 <img
@@ -325,13 +339,10 @@ export default function UpdateUserModal({
                       }}
                       className="mt-1"
                     />
-
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">{service.name}</p>
                       {service.description && (
-                        <p className="text-xs text-gray-500">
-                          {service.description}
-                        </p>
+                        <p className="text-xs text-gray-500">{service.description}</p>
                       )}
                       {service.key === "door_control" && hasDoorConfig && (
                         <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
@@ -344,9 +355,7 @@ export default function UpdateUserModal({
                 ))}
 
                 {allServices.length === 0 && (
-                  <p className="text-sm text-gray-500">
-                    No service available.
-                  </p>
+                  <p className="text-sm text-gray-500">No service available.</p>
                 )}
               </div>
             )}
@@ -377,9 +386,7 @@ export default function UpdateUserModal({
               )}
 
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">
-                  Tuya Region
-                </label>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">Tuya Region</label>
                 <div className="relative">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <select
@@ -396,9 +403,7 @@ export default function UpdateUserModal({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">
-                  Access ID
-                </label>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">Access ID</label>
                 <input
                   type="text"
                   placeholder="Enter Tuya Access ID"
@@ -409,9 +414,7 @@ export default function UpdateUserModal({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">
-                  Access Secret
-                </label>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">Access Secret</label>
                 <input
                   type="password"
                   placeholder="Enter Tuya Access Secret (write-only)"
@@ -422,9 +425,7 @@ export default function UpdateUserModal({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">
-                  Device ID
-                </label>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">Device ID</label>
                 <input
                   type="text"
                   placeholder="Enter Device ID"
@@ -435,9 +436,7 @@ export default function UpdateUserModal({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">
-                  DP Code
-                </label>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">DP Code</label>
                 <input
                   type="text"
                   placeholder="e.g., switch_1"

@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, ClipboardCheck, Users, Calendar, TrendingUp, Clock, Loader2, Settings, Download } from "lucide-react";
+import { CheckCircle2, XCircle, ClipboardCheck, Users, Calendar, TrendingUp, Clock, Loader2, Settings, Download, Fingerprint, Globe } from "lucide-react";
 
 type AttendanceRow = {
   employee_id: string;
   name: string;
   role: string;
   photo: string;
-  status: "present" | "absent" | "not_arrived";
+  status: "present" | "absent" | "not_recorded";
+  source: "biometric" | "web" | "both" | null;
   check_in: string | null;
   check_out: string | null;
   is_late?: boolean;
@@ -31,6 +32,37 @@ const formatSGTime = (iso: string) =>
     hour: "2-digit",
     minute: "2-digit",
   });
+
+// ── Source badge component ──
+function SourceBadge({ source }: { source: "biometric" | "web" | "both" | null }) {
+  if (!source) return null;
+
+  if (source === "biometric") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded">
+        <Fingerprint className="w-3 h-3" />
+        Biometric
+      </span>
+    );
+  }
+
+  if (source === "web") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-100 text-sky-700 text-xs font-semibold rounded">
+        <Globe className="w-3 h-3" />
+        Web
+      </span>
+    );
+  }
+
+  // both
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
+      <Fingerprint className="w-3 h-3" />
+      Both
+    </span>
+  );
+}
 
 export default function AttendancePage() {
   const router = useRouter();
@@ -57,7 +89,6 @@ export default function AttendancePage() {
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
 
-  // Update current time in Singapore timezone
   useEffect(() => {
     const updateTime = () => {
       setCurrentTime(
@@ -174,12 +205,11 @@ export default function AttendancePage() {
 
     const interval = setInterval(() => {
       loadAttendance();
-    }, 30000); // 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [date, profile?.org_id]);
 
-  // Save schedule
   const saveSchedule = async () => {
     if (!profile?.org_id) return;
 
@@ -242,7 +272,7 @@ export default function AttendancePage() {
 
   const presentCount = employees.filter(e => e.status === "present").length;
   const absentCount = employees.filter(e => e.status === "absent").length;
-  const notArrivedCount = employees.filter(e => e.status === "not_arrived").length;
+  const notRecordedCount = employees.filter(e => e.status === "not_recorded").length;
   const totalCount = employees.length;
   const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
 
@@ -277,7 +307,6 @@ export default function AttendancePage() {
             className="border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
 
-          {/* PDF Download Button */}
           <button
             onClick={downloadAttendancePdf}
             disabled={downloadingPdf || employees.length === 0}
@@ -319,73 +348,42 @@ export default function AttendancePage() {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Morning Start */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Morning Start
-                  </label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Morning Start</label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="time"
-                      value={schedule.morning_start}
-                      onChange={(e) =>
-                        setSchedule({ ...schedule, morning_start: e.target.value })
-                      }
+                    <input type="time" value={schedule.morning_start}
+                      onChange={(e) => setSchedule({ ...schedule, morning_start: e.target.value })}
                       className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                     />
                   </div>
                 </div>
-
-                {/* Morning End */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Morning End
-                  </label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Morning End</label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="time"
-                      value={schedule.morning_end}
-                      onChange={(e) =>
-                        setSchedule({ ...schedule, morning_end: e.target.value })
-                      }
+                    <input type="time" value={schedule.morning_end}
+                      onChange={(e) => setSchedule({ ...schedule, morning_end: e.target.value })}
                       className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                     />
                   </div>
                 </div>
-
-                {/* Evening Start */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Evening Start
-                  </label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Evening Start</label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="time"
-                      value={schedule.evening_start}
-                      onChange={(e) =>
-                        setSchedule({ ...schedule, evening_start: e.target.value })
-                      }
+                    <input type="time" value={schedule.evening_start}
+                      onChange={(e) => setSchedule({ ...schedule, evening_start: e.target.value })}
                       className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                     />
                   </div>
                 </div>
-
-                {/* Evening End */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Evening End
-                  </label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Evening End</label>
                   <div className="relative">
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="time"
-                      value={schedule.evening_end}
-                      onChange={(e) =>
-                        setSchedule({ ...schedule, evening_end: e.target.value })
-                      }
+                    <input type="time" value={schedule.evening_end}
+                      onChange={(e) => setSchedule({ ...schedule, evening_end: e.target.value })}
                       className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                     />
                   </div>
@@ -398,15 +396,9 @@ export default function AttendancePage() {
                 className="mt-6 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-emerald-700 hover:to-teal-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {scheduleSaving ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Saving...
-                  </>
+                  <><Loader2 className="w-5 h-5 animate-spin" />Saving...</>
                 ) : (
-                  <>
-                    <Settings className="w-5 h-5" />
-                    Save Schedule
-                  </>
+                  <><Settings className="w-5 h-5" />Save Schedule</>
                 )}
               </button>
             </>
@@ -416,7 +408,6 @@ export default function AttendancePage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Total Employees */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -427,7 +418,6 @@ export default function AttendancePage() {
           <p className="text-3xl font-bold text-slate-800">{totalCount}</p>
         </div>
 
-        {/* Present */}
         <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -438,7 +428,6 @@ export default function AttendancePage() {
           <p className="text-3xl font-bold text-emerald-700">{presentCount}</p>
         </div>
 
-        {/* Absent */}
         <div className="bg-gradient-to-br from-red-50 to-rose-50 border-2 border-red-200 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -449,7 +438,6 @@ export default function AttendancePage() {
           <p className="text-3xl font-bold text-red-700">{absentCount}</p>
         </div>
 
-        {/* Attendance Rate */}
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -469,15 +457,11 @@ export default function AttendancePage() {
               <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
                 <Users className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-800">
-                Employee Attendance
-              </h2>
+              <h2 className="text-2xl font-bold text-slate-800">Employee Attendance</h2>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
               <Clock className="w-4 h-4 text-slate-500" />
-              <span className="text-sm font-semibold text-slate-700">
-                {currentTime}
-              </span>
+              <span className="text-sm font-semibold text-slate-700">{currentTime}</span>
             </div>
           </div>
         </div>
@@ -502,12 +486,8 @@ export default function AttendancePage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50 text-left text-sm text-slate-600 border-b border-slate-200">
-                  <th className="p-4 font-semibold">
-                    Employee
-                  </th>
-                  <th className="p-4 font-semibold text-center">
-                    Attendance
-                  </th>
+                  <th className="p-4 font-semibold">Employee</th>
+                  <th className="p-4 font-semibold text-center">Attendance</th>
                 </tr>
               </thead>
 
@@ -533,20 +513,18 @@ export default function AttendancePage() {
                           )}
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-800 text-lg">
-                            {emp.name}
-                          </p>
-                          <p className="text-sm text-slate-500">
-                            {emp.role}
-                          </p>
+                          <p className="font-semibold text-slate-800 text-lg">{emp.name}</p>
+                          <p className="text-sm text-slate-500">{emp.role}</p>
                           {emp.status === "present" && emp.check_in && (
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3 text-emerald-600" />
                                 <p className="text-xs text-emerald-600 font-semibold">
                                   {formatSGTime(emp.check_in)}
                                 </p>
                               </div>
+                              {/* ── Source badge ── */}
+                              <SourceBadge source={emp.source} />
                               {emp.is_late && (
                                 <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-semibold rounded">
                                   Late
@@ -577,10 +555,10 @@ export default function AttendancePage() {
                           Absent
                         </span>
                       )}
-                      {emp.status === "not_arrived" && (
-                        <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700 rounded-full font-semibold shadow-sm border border-yellow-200">
+                      {emp.status === "not_recorded" && (
+                        <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-slate-100 to-gray-100 text-slate-500 rounded-full font-semibold shadow-sm border border-slate-200">
                           <Clock className="w-5 h-5" />
-                          Not Arrived
+                          Not Recorded
                         </span>
                       )}
                     </td>
@@ -597,8 +575,8 @@ export default function AttendancePage() {
             Showing {employees.length} employee{employees.length !== 1 ? 's' : ''} •
             <span className="text-emerald-600 font-semibold ml-1">{presentCount} Present</span> •
             <span className="text-red-600 font-semibold ml-1">{absentCount} Absent</span>
-            {notArrivedCount > 0 && (
-              <span className="text-yellow-600 font-semibold ml-1"> • {notArrivedCount} Not Arrived</span>
+            {notRecordedCount > 0 && (
+              <span className="text-slate-500 font-semibold ml-1"> • {notRecordedCount} Not Recorded</span>
             )}
           </div>
         )}

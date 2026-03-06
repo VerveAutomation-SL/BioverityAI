@@ -121,8 +121,15 @@ export async function GET(req: Request) {
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
 
-        const nowSG = new Date().toLocaleString("en-US", { timeZone: "Asia/Singapore" });
-        const today = new Date(nowSG).toISOString().slice(0, 10);
+        // ── Timezone per org ──
+        const ORG_TIMEZONES: Record<string, string> = {
+            omnicomm: "Asia/Singapore",
+            VerveSL:  "Asia/Colombo",
+        };
+        const orgTimezone = ORG_TIMEZONES[org_id] ?? "Asia/Singapore"; // fallback to SG
+
+        const nowLocal = new Date().toLocaleString("en-US", { timeZone: orgTimezone });
+        const today = new Date(nowLocal).toISOString().slice(0, 10);
         const start = `${today}T00:00:00`;
         const end = `${today}T23:59:59`;
 
@@ -154,8 +161,9 @@ export async function GET(req: Request) {
             webCount: number; bioCount2: number;
         };
 
+        // ── fmtTime uses the org's timezone ──
         const fmtTime = (ts: string | null) => ts
-            ? new Date(ts).toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Singapore" })
+            ? new Date(ts).toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit", timeZone: orgTimezone })
             : null;
 
         const calcHours = (cinMs: number | null, coutMs: number | null) => {

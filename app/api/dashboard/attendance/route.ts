@@ -11,6 +11,11 @@ const SG_END = (date: Date) =>
     date.toLocaleString("en-US", { timeZone: "Asia/Singapore" })
   ).toISOString().slice(0, 10) + "T23:59:59+08:00";
 
+const SG_DATE = (date: Date) =>
+  new Date(
+    date.toLocaleString("en-US", { timeZone: "Asia/Singapore" })
+  ).toISOString().slice(0, 10);
+
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.replace("Bearer ", "");
@@ -56,15 +61,28 @@ export async function GET(req: Request) {
   const now = new Date();
   const start = SG_START(now);
   const end = SG_END(now);
+  const today = SG_DATE(now);
 
-  const { data: logsToday } = await supabase
+  // ── Biometric logs ──
+  const { data: bioLogsToday } = await supabase
     .from("attendance_logs")
     .select("employee_id")
     .eq("org_id", orgId)
     .gte("event_time", start)
     .lte("event_time", end);
 
-  const presentSet = new Set(logsToday?.map(l => l.employee_id));
+  // ── Web logs ──
+  const { data: webLogsToday } = await supabase
+    .from("web_attendance_logs")
+    .select("employee_id")
+    .eq("attendance_date", today)
+    .in("employee_id", employeeIds);
+
+  // ── Merge both into one present set ──
+  const presentSet = new Set([
+    ...(bioLogsToday?.map(l => l.employee_id) ?? []),
+    ...(webLogsToday?.map(l => l.employee_id) ?? []),
+  ]);
   const presentToday = presentSet.size;
   const absentToday = totalEmployees - presentToday;
 
@@ -77,15 +95,28 @@ export async function GET(req: Request) {
 
     const s = SG_START(d);
     const e = SG_END(d);
+    const dayStr = SG_DATE(d);
 
-    const { data: dayLogs } = await supabase
+    // ── Biometric ──
+    const { data: bioDayLogs } = await supabase
       .from("attendance_logs")
       .select("employee_id")
       .eq("org_id", orgId)
       .gte("event_time", s)
       .lte("event_time", e);
 
-    const dayPresent = new Set(dayLogs?.map(l => l.employee_id)).size;
+    // ── Web ──
+    const { data: webDayLogs } = await supabase
+      .from("web_attendance_logs")
+      .select("employee_id")
+      .eq("attendance_date", dayStr)
+      .in("employee_id", employeeIds);
+
+    // ── Merge ──
+    const dayPresent = new Set([
+      ...(bioDayLogs?.map(l => l.employee_id) ?? []),
+      ...(webDayLogs?.map(l => l.employee_id) ?? []),
+    ]).size;
 
     trend.push({
       day: d.toLocaleDateString("en-SG", { weekday: "short" }),
