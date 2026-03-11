@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { PDFDocument, rgb, StandardFonts, PDFOperator, PDFNumber } from "pdf-lib";
+import * as ct from "countries-and-timezones";
 
 function hex(h: string) {
     const n = parseInt(h.slice(1), 16);
@@ -23,7 +24,6 @@ function rect(
     page.drawRectangle({ x, y, width: w, height: h, color: colour });
 }
 
-// Helper: create a PDFOperator without TS complaining about the string type
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const op = (name: string, args?: PDFNumber[]) => PDFOperator.of(name as any, args);
 
@@ -80,7 +80,7 @@ function drawBarChart(
         const bX       = x + i * groupW + gap;
         const presentH = (bar.presentVal / maxVal) * chartH;
         const absentH  = (bar.absentVal  / maxVal) * chartH;
-        if (presentH > 0) page.drawRectangle({ x: bX, y,              width: barW, height: presentH, color: green  });
+        if (presentH > 0) page.drawRectangle({ x: bX, y,               width: barW, height: presentH, color: green  });
         if (absentH  > 0) page.drawRectangle({ x: bX, y: y + presentH, width: barW, height: absentH,  color: danger });
         const totalStr = String(bar.totalVal);
         const tw = font.widthOfTextAtSize(totalStr, fontSize);
@@ -107,11 +107,19 @@ export async function GET(req: Request) {
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
 
-        const ORG_TIMEZONES: Record<string, string> = {
-            omnicomm: "Asia/Singapore",
-            VerveSL:  "Asia/Colombo",
-        };
-        const orgTimezone = ORG_TIMEZONES[org_id] ?? "Asia/Singapore";
+        // ✅ Single query including country
+        const { data: orgProfile } = await supabase
+            .from("profiles").select("full_name, organization_logo, country")
+            .eq("org_id", org_id).limit(1).maybeSingle();
+
+        const orgName    = orgProfile?.full_name         ?? "Organisation";
+        const orgLogoUrl = orgProfile?.organization_logo ?? null;
+
+        // ✅ Dynamic timezone derived from country in profiles table
+        const countryMatch = Object.values(ct.getAllCountries()).find(
+            (c) => c.name === (orgProfile?.country ?? "")
+        );
+        const orgTimezone = countryMatch?.timezones?.[0] ?? "Asia/Singapore";
 
         const nowLocal = new Date().toLocaleString("en-US", { timeZone: orgTimezone });
         const today    = new Date(nowLocal).toISOString().slice(0, 10);
@@ -120,12 +128,6 @@ export async function GET(req: Request) {
 
         const { data: recipients } = await supabase
             .from("alert_recipients").select("phone_number").eq("org_id", org_id);
-
-        const { data: orgProfile } = await supabase
-            .from("profiles").select("full_name, organization_logo")
-            .eq("org_id", org_id).limit(1).maybeSingle();
-        const orgName    = orgProfile?.full_name         ?? "Organisation";
-        const orgLogoUrl = orgProfile?.organization_logo ?? null;
 
         const { data: employees } = await supabase
             .from("employees").select("id, full_name, employee_id, department").eq("org_id", org_id);
@@ -222,21 +224,12 @@ export async function GET(req: Request) {
             divider:   hex("#dee2e6"),
         };
 
-        /* ══════════════════════════════════════════════════════════
-           drawOrgLogo — clips the logo image into a perfect circle.
-
-           PDF clipping path = CSS border-radius:50%.
-           The `op()` helper above casts the operator name string
-           to `any` to satisfy pdf-lib's strict PDFOperatorNames type
-           without needing an enum that doesn't expose all operators.
-        ══════════════════════════════════════════════════════════ */
         const drawOrgLogo = async (
             pg: ReturnType<PDFDocument["addPage"]>,
             cx: number, cy: number, R: number,
             logoUrl: string | null, name: string
         ) => {
-            pg.drawCircle({ x: cx, y: cy, size: R, color: C.white });
-
+            // No white background — transparent by default
             let embedded = false;
 
             if (logoUrl) {
@@ -248,31 +241,11 @@ export async function GET(req: Request) {
                         const dim    = img.scaleToFit(R * 2, R * 2);
                         const imgX   = cx - dim.width  / 2;
                         const imgY   = cy - dim.height / 2;
-
-                        const k = 0.5523048374; // Bézier constant for circle approximation
-                        const n = (v: number) => PDFNumber.of(v);
-
-                        pg.pushOperators(
-                            op("q"),  // save graphics state
-
-                            // Circle path (4 cubic Bézier quarters)
-                            op("m",  [n(cx + R), n(cy)]),
-                            op("c",  [n(cx + R), n(cy + k*R), n(cx + k*R), n(cy + R), n(cx),     n(cy + R)]),
-                            op("c",  [n(cx - k*R), n(cy + R), n(cx - R),   n(cy + k*R), n(cx - R), n(cy)]),
-                            op("c",  [n(cx - R), n(cy - k*R), n(cx - k*R), n(cy - R), n(cx),     n(cy - R)]),
-                            op("c",  [n(cx + k*R), n(cy - R), n(cx + R),   n(cy - k*R), n(cx + R), n(cy)]),
-                            op("h"),  // close path
-                            op("W"),  // activate clipping region (nonzero winding)
-                            op("n"),  // end path — no fill, no stroke
-                        );
-
+                        // Draw logo directly — no circular clip, no border, no background
                         pg.drawImage(img, { x: imgX, y: imgY, width: dim.width, height: dim.height });
-
-                        pg.pushOperators(op("Q")); // restore state — clip removed
-
                         embedded = true;
                     } catch (e) {
-                        console.warn("Circular logo clip failed:", e);
+                        console.warn("Logo embed failed:", e);
                     }
                 }
             }
@@ -283,9 +256,6 @@ export async function GET(req: Request) {
                 const iw = fontBold.widthOfTextAtSize(initials, fs);
                 pg.drawText(initials, { x: cx - iw / 2, y: cy - fs * 0.35, size: fs, font: fontBold, color: C.dark });
             }
-
-            // Hairline border — keeps the edge crisp on any background
-            pg.drawCircle({ x: cx, y: cy, size: R, borderColor: hex("#cbd5e1"), borderWidth: 0.5 });
         };
 
         const drawPageHeader = async (pg: ReturnType<PDFDocument["addPage"]>, title: string) => {
@@ -311,9 +281,8 @@ export async function GET(req: Request) {
             const badgeCY = pageH - 52;
             await drawOrgLogo(pg, badgeCX, badgeCY, badgeR, orgLogoUrl, orgName);
 
-            // ── Org name: full name, word-wrapped into up to 2 lines, centred under logo ──
             const nameFontSize = 9;
-            const nameMaxW     = 160; // generous max width — wider than the badge
+            const nameMaxW     = 160;
             const nameWords    = orgName.split(" ");
             const nameLines: string[] = [];
             let   currentLine  = "";
@@ -329,10 +298,9 @@ export async function GET(req: Request) {
             }
             if (currentLine) nameLines.push(currentLine);
 
-            const nameLineH  = nameFontSize + 3;   // line height
-            const nameTotalH = nameLines.length * nameLineH;
-            // Baseline of the bottom line sits just above the footer strip
-            const nameBaseY  = pageH - 100 + 4 + (nameTotalH - nameLineH);
+            const nameLineH  = nameFontSize + 3;
+            // Position name just below the logo circle
+            const nameBaseY  = badgeCY - badgeR - 6;
 
             nameLines.forEach((line, li) => {
                 const lw = fontBold.widthOfTextAtSize(line, nameFontSize);

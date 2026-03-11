@@ -1,7 +1,6 @@
 import { withCors, corsOptions } from "@/lib/cors";
 import { supabase } from "@/lib/supabaseClient";
 
-// Handle preflight
 export function OPTIONS(req: Request) {
   return corsOptions(req);
 }
@@ -20,6 +19,7 @@ export async function GET(req: Request) {
       role,
       email,
       organization_logo,
+      country,
       created_at
     `)
     .order("created_at", { ascending: false });
@@ -31,11 +31,7 @@ export async function GET(req: Request) {
   const { data, error } = await query;
 
   if (error) {
-    return withCors(
-      { error: error.message },
-      500,
-      req
-    );
+    return withCors({ error: error.message }, 500, req);
   }
 
   const users = (data || []).map((u) => ({
@@ -47,12 +43,9 @@ export async function GET(req: Request) {
     email: u.email,
     full_name: u.full_name,
     organization_logo: u.organization_logo,
+    country: u.country,
     created_at: u.created_at,
   }));
 
-  return withCors(
-    { users },
-    200,
-    req
-  );
+  return withCors({ users }, 200, req);
 }

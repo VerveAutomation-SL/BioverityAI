@@ -5,6 +5,79 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import ShopNavbar from "@/app/components/ShopNavbar";
 import { UserPlus, Lock, User, Building2, Eye, EyeOff, Mail } from "lucide-react";
+import ReactCountryFlag from "react-country-flag";
+import Select from "react-select";
+// @ts-ignore
+import countryList from "country-list";
+
+interface CountryOption {
+  value: string;
+  label: string;
+}
+
+const countryOptions: CountryOption[] = countryList.getData().map(
+  (c: { code: string; name: string }) => ({
+    value: c.code,
+    label: c.name,
+  })
+);
+
+function CountrySelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const selected: CountryOption | null =
+    countryOptions.find((o: CountryOption) => o.label === value) || null;
+
+  return (
+    <Select<CountryOption>
+      options={countryOptions}
+      value={selected}
+      onChange={(opt) => onChange(opt?.label || "")}
+      placeholder="Select Country"
+      isSearchable
+      formatOptionLabel={(opt: CountryOption) => (
+        <div className="flex items-center gap-2">
+          <ReactCountryFlag
+            countryCode={opt.value}
+            svg
+            style={{ width: "1.2em", height: "1.2em" }}
+          />
+          <span>{opt.label}</span>
+        </div>
+      )}
+      styles={{
+        control: (base, state) => ({
+          ...base,
+          borderRadius: "0.75rem",
+          borderWidth: "2px",
+          borderColor: state.isFocused ? "#10b981" : "#e5e7eb",
+          boxShadow: "none",
+          padding: "4px",
+          "&:hover": { borderColor: "#10b981" },
+        }),
+        menu: (base) => ({
+          ...base,
+          borderRadius: "0.75rem",
+          overflow: "hidden",
+          zIndex: 50,
+        }),
+        option: (base, state) => ({
+          ...base,
+          backgroundColor: state.isSelected
+            ? "#d1fae5"
+            : state.isFocused
+            ? "#f0fdf4"
+            : "white",
+          color: state.isSelected ? "#065f46" : "#334155",
+        }),
+      }}
+    />
+  );
+}
 
 export default function UserRegistrationPage() {
   const router = useRouter();
@@ -20,6 +93,7 @@ export default function UserRegistrationPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [country, setCountry] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -27,7 +101,6 @@ export default function UserRegistrationPage() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [showServices, setShowServices] = useState(false);
 
-  // 1️⃣ Add state for dynamic services
   const [services, setServices] = useState<any[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
 
@@ -43,7 +116,6 @@ export default function UserRegistrationPage() {
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
-
       if (!user) return router.replace("/login");
 
       const { data: prof } = await supabase
@@ -51,7 +123,6 @@ export default function UserRegistrationPage() {
         .select("role, org_id, full_name, organization_logo")
         .eq("id", user.id)
         .single();
-
 
       if (!prof || prof.role !== "admin") return router.replace("/login");
 
@@ -61,7 +132,6 @@ export default function UserRegistrationPage() {
     })();
   }, []);
 
-  // 2️⃣ Fetch services on page load
   useEffect(() => {
     fetchServices();
   }, []);
@@ -70,9 +140,7 @@ export default function UserRegistrationPage() {
     try {
       const res = await fetch("/api/services");
       const data = await res.json();
-      if (res.ok) {
-        setServices(data);
-      }
+      if (res.ok) setServices(data);
     } catch {
       console.error("Failed to load services");
     } finally {
@@ -88,6 +156,11 @@ export default function UserRegistrationPage() {
 
     if (!orgId) {
       alert("Organization ID is required.");
+      return;
+    }
+
+    if (!country) {
+      alert("Please select a country.");
       return;
     }
 
@@ -107,6 +180,7 @@ export default function UserRegistrationPage() {
         username,
         org_id: orgId,
         role: "user",
+        country,
         services: selectedServices,
       }),
     });
@@ -128,6 +202,7 @@ export default function UserRegistrationPage() {
     setOrganizationName("");
     setPassword("");
     setConfirmPassword("");
+    setCountry("");
     setSelectedServices([]);
     setShowServices(false);
   }
@@ -137,9 +212,7 @@ export default function UserRegistrationPage() {
       <div className="w-full h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <span className="text-lg text-gray-600 font-medium">
-            Loading user registration...
-          </span>
+          <span className="text-lg text-gray-600 font-medium">Loading user registration...</span>
         </div>
       </div>
     );
@@ -147,16 +220,13 @@ export default function UserRegistrationPage() {
 
   async function handleLogoUpload(file: File) {
     setUploadingLogo(true);
-
     const ext = file.name.split(".").pop();
     const fileName = `logos/${crypto.randomUUID()}.${ext}`;
 
-    const { error } = await supabase.storage
-      .from("products")
-      .upload(fileName, file, {
-        contentType: file.type,
-        upsert: false,
-      });
+    const { error } = await supabase.storage.from("products").upload(fileName, file, {
+      contentType: file.type,
+      upsert: false,
+    });
 
     if (error) {
       alert(error.message);
@@ -164,10 +234,7 @@ export default function UserRegistrationPage() {
       return;
     }
 
-    const { data } = supabase.storage
-      .from("products")
-      .getPublicUrl(fileName);
-
+    const { data } = supabase.storage.from("products").getPublicUrl(fileName);
     setOrganizationLogo(data.publicUrl);
     setUploadingLogo(false);
   }
@@ -176,10 +243,7 @@ export default function UserRegistrationPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50 mt-20 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-200/20 rounded-full blur-3xl animate-pulse"></div>
-        <div
-          className="absolute bottom-20 right-10 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "1s" }}
-        ></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }}></div>
       </div>
 
       <ShopNavbar
@@ -205,6 +269,7 @@ export default function UserRegistrationPage() {
           {/* Form */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border-2 border-emerald-100 p-8">
             <form className="space-y-4">
+
               {/* Organization ID */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -232,12 +297,20 @@ export default function UserRegistrationPage() {
                 />
               </div>
 
+              {/* ✅ Country — below Organization Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-emerald-600" />
+                  Country *
+                </label>
+                <CountrySelect value={country} onChange={setCountry} />
+              </div>
+
               {/* Organization Logo */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Organization Logo
                 </label>
-
                 <div className="flex items-center gap-4">
                   {organizationLogo ? (
                     <img
@@ -250,14 +323,11 @@ export default function UserRegistrationPage() {
                       No Logo
                     </div>
                   )}
-
                   <input
                     type="file"
                     accept="image/*"
                     onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        handleLogoUpload(e.target.files[0]);
-                      }
+                      if (e.target.files?.[0]) handleLogoUpload(e.target.files[0]);
                     }}
                   />
                 </div>
@@ -290,13 +360,12 @@ export default function UserRegistrationPage() {
                 />
               </div>
 
-              {/* 3️⃣ SERVICES DROPDOWN - Dynamic Version */}
+              {/* Services */}
               <div className="relative">
                 <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                   <Lock className="w-4 h-4 text-emerald-600" />
                   Enabled Services
                 </label>
-
                 <button
                   type="button"
                   className="w-full border-2 border-gray-200 rounded-xl p-3 bg-gray-50 text-left flex justify-between items-center"
@@ -304,7 +373,7 @@ export default function UserRegistrationPage() {
                 >
                   <span className="text-sm text-gray-700">
                     {selectedServices.length > 0
-                      ? selectedServices.map(key => 
+                      ? selectedServices.map(key =>
                           services.find(s => s.key === key)?.name || key
                         ).join(", ")
                       : "Select services"}
@@ -320,10 +389,7 @@ export default function UserRegistrationPage() {
                       <p className="text-sm text-gray-500">No services available</p>
                     ) : (
                       services.map((service) => (
-                        <label
-                          key={service.key}
-                          className="flex items-center gap-3 cursor-pointer"
-                        >
+                        <label key={service.key} className="flex items-center gap-3 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={selectedServices.includes(service.key)}
@@ -331,12 +397,8 @@ export default function UserRegistrationPage() {
                             className="w-4 h-4 accent-emerald-600"
                           />
                           <div>
-                            <p className="text-sm font-semibold text-gray-800">
-                              {service.name}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {service.description}
-                            </p>
+                            <p className="text-sm font-semibold text-gray-800">{service.name}</p>
+                            <p className="text-xs text-gray-600">{service.description}</p>
                           </div>
                         </label>
                       ))
@@ -357,9 +419,7 @@ export default function UserRegistrationPage() {
               {/* Passwords */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Password
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
                   <input
                     type="password"
                     value={password}
@@ -367,11 +427,8 @@ export default function UserRegistrationPage() {
                     className="w-full border-2 border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-200 outline-none"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Confirm Password
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
                   <input
                     type="password"
                     value={confirmPassword}
@@ -397,7 +454,6 @@ export default function UserRegistrationPage() {
                 >
                   Cancel
                 </button>
-
                 <button
                   type="button"
                   onClick={handleRegister}
@@ -409,7 +465,6 @@ export default function UserRegistrationPage() {
 
             </form>
           </div>
-
         </div>
       </div>
     </div>

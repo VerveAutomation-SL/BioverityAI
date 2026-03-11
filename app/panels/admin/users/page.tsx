@@ -9,16 +9,21 @@ import {
     Users,
     Pencil,
     Trash2,
-    Loader2,
     Search,
     Filter,
-    UserPlus,
     RefreshCw,
     Mail,
     Building2,
     Shield,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import ReactCountryFlag from "react-country-flag";
+// @ts-ignore
+import countryList from "country-list";
+
+const nameToCode: Record<string, string> = Object.fromEntries(
+    countryList.getData().map((c: { code: string; name: string }) => [c.name, c.code])
+);
 
 interface User {
     id: string;
@@ -29,6 +34,7 @@ interface User {
     email?: string;
     full_name?: string;
     organization_logo?: string;
+    country?: string | null;
     created_at?: string;
 }
 
@@ -42,15 +48,12 @@ export default function UserManagementPage() {
     const [roleFilter, setRoleFilter] = useState("all");
     const [refreshing, setRefreshing] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
-    
-    // A1️⃣ Add state to cache user services
     const [userServices, setUserServices] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
         (async () => {
             const { data } = await supabase.auth.getUser();
             if (!data.user) return router.replace("/login");
-
             fetchUsers();
         })();
     }, []);
@@ -64,12 +67,7 @@ export default function UserManagementPage() {
         try {
             const res = await apiFetch("/api/users/fetch");
             const data = await res.json();
-
-            if (!res.ok) {
-                toast.error(data.error || "Failed to fetch users");
-                return;
-            }
-
+            if (!res.ok) { toast.error(data.error || "Failed to fetch users"); return; }
             setUsers(data.users);
         } catch {
             toast.error("Failed to fetch users");
@@ -83,12 +81,7 @@ export default function UserManagementPage() {
         try {
             const res = await apiFetch("/api/users/fetch");
             const data = await res.json();
-
-            if (!res.ok) {
-                toast.error(data.error || "Failed to refresh users");
-                return;
-            }
-
+            if (!res.ok) { toast.error(data.error || "Failed to refresh users"); return; }
             setUsers(data.users);
             toast.success("Users refreshed!");
         } catch {
@@ -98,31 +91,24 @@ export default function UserManagementPage() {
         }
     }
 
-    // A2️⃣ Add a helper to fetch services for ONE user
     async function fetchUserServices(userId: string) {
-        if (userServices[userId]) return; // already cached
-
+        if (userServices[userId]) return;
         try {
             const res = await apiFetch(`/api/user-services?user_id=${userId}`);
             const data = await res.json();
-
             if (!res.ok) return;
-
             setUserServices((prev) => ({
                 ...prev,
-                [userId]: data.services.map(
-                    (s: any) => s.services?.name
-                ),
+                [userId]: data.services.map((s: any) => s.services?.name),
             }));
         } catch {
-            // silent fail (do not break UI)
+            // silent fail
         }
     }
 
     function filterUsers() {
         let filtered = [...users];
 
-        // Search filter
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(
@@ -131,11 +117,11 @@ export default function UserManagementPage() {
                     user.organization_name?.toLowerCase().includes(query) ||
                     user.org_id?.toLowerCase().includes(query) ||
                     user.email?.toLowerCase().includes(query) ||
-                    user.full_name?.toLowerCase().includes(query)
+                    user.full_name?.toLowerCase().includes(query) ||
+                    user.country?.toLowerCase().includes(query)
             );
         }
 
-        // Role filter
         if (roleFilter !== "all") {
             filtered = filtered.filter((user) => user.role === roleFilter);
         }
@@ -152,11 +138,7 @@ export default function UserManagementPage() {
         });
 
         const data = await res.json();
-
-        if (!res.ok) {
-            toast.error(data.error || "Delete failed");
-            return;
-        }
+        if (!res.ok) { toast.error(data.error || "Delete failed"); return; }
 
         toast.success("User deleted successfully!");
         setUsers((prev) => prev.filter((u) => u.id !== id));
@@ -179,10 +161,7 @@ export default function UserManagementPage() {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50 relative overflow-hidden">
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-200/20 rounded-full blur-3xl animate-pulse"></div>
-                <div
-                    className="absolute bottom-20 right-10 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse"
-                    style={{ animationDelay: "1s" }}
-                ></div>
+                <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }}></div>
             </div>
 
             <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
@@ -197,9 +176,7 @@ export default function UserManagementPage() {
                                 <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 via-green-600 to-blue-700 bg-clip-text text-transparent">
                                     User Management
                                 </h1>
-                                <p className="text-gray-600 text-sm mt-1">
-                                    Manage and monitor all registered users
-                                </p>
+                                <p className="text-gray-600 text-sm mt-1">Manage and monitor all registered users</p>
                             </div>
                         </div>
 
@@ -228,7 +205,6 @@ export default function UserManagementPage() {
                                 </div>
                             </div>
                         </div>
-
                         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-blue-600 rounded-lg">
@@ -240,7 +216,6 @@ export default function UserManagementPage() {
                                 </div>
                             </div>
                         </div>
-
                         <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-purple-600 rounded-lg">
@@ -260,28 +235,21 @@ export default function UserManagementPage() {
                 {/* Filters */}
                 <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border-2 border-blue-100 p-6 mb-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Search */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Search Users
-                            </label>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Search Users</label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     type="text"
-                                    placeholder="Search by username, email, org ID, or name..."
+                                    placeholder="Search by username, email, org ID, country..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 outline-none"
                                 />
                             </div>
                         </div>
-
-                        {/* Role Filter */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Filter by Role
-                            </label>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Filter by Role</label>
                             <div className="relative">
                                 <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <select
@@ -309,6 +277,7 @@ export default function UserManagementPage() {
                                 <tr className="text-left text-sm font-semibold text-gray-700">
                                     <th className="p-4">User</th>
                                     <th className="p-4">Organization</th>
+                                    <th className="p-4">Country</th>
                                     <th className="p-4">Org ID</th>
                                     <th className="p-4">Role</th>
                                     <th className="p-4 text-right">Actions</th>
@@ -318,7 +287,7 @@ export default function UserManagementPage() {
                             <tbody className="divide-y divide-gray-200">
                                 {filteredUsers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="p-12 text-center">
+                                        <td colSpan={6} className="p-12 text-center">
                                             <Users className="w-16 h-16 mx-auto text-gray-300 mb-3" />
                                             <p className="text-gray-500 font-medium">
                                                 {searchQuery || roleFilter !== "all"
@@ -329,11 +298,12 @@ export default function UserManagementPage() {
                                     </tr>
                                 ) : (
                                     filteredUsers.map((u) => (
-                                        <tr 
-                                            key={u.id} 
+                                        <tr
+                                            key={u.id}
                                             className="hover:bg-emerald-50/50 transition-colors"
                                             onMouseEnter={() => fetchUserServices(u.id)}
                                         >
+                                            {/* User */}
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3">
                                                     {u.organization_logo ? (
@@ -355,12 +325,12 @@ export default function UserManagementPage() {
                                                                 {u.email}
                                                             </p>
                                                         )}
-                                                        {/* A3️⃣ Service badges */}
+                                                        {/* ✅ Fixed: unique key using userId + index + service name */}
                                                         {userServices[u.id] && (
                                                             <div className="flex flex-wrap gap-1 mt-1">
-                                                                {userServices[u.id].map((name) => (
+                                                                {userServices[u.id].map((name, idx) => (
                                                                     <span
-                                                                        key={name}
+                                                                        key={`${u.id}-${name}-${idx}`}
                                                                         className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-md font-medium"
                                                                     >
                                                                         {name}
@@ -371,29 +341,51 @@ export default function UserManagementPage() {
                                                     </div>
                                                 </div>
                                             </td>
+
+                                            {/* Organization */}
                                             <td className="p-4">
                                                 <p className="font-medium text-gray-900">
                                                     {u.organization_name || u.full_name || "N/A"}
                                                 </p>
                                             </td>
+
+                                            {/* Country */}
+                                            <td className="p-4">
+                                                {u.country && nameToCode[u.country] ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <ReactCountryFlag
+                                                            countryCode={nameToCode[u.country]}
+                                                            svg
+                                                            style={{ width: "1.2em", height: "1.2em" }}
+                                                        />
+                                                        <span className="text-sm text-gray-700">{u.country}</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm text-gray-400">—</span>
+                                                )}
+                                            </td>
+
+                                            {/* Org ID */}
                                             <td className="p-4">
                                                 <span className="px-3 py-1 bg-purple-100 text-purple-700 font-mono text-sm rounded-full font-semibold">
                                                     {u.org_id}
                                                 </span>
                                             </td>
+
+                                            {/* Role */}
                                             <td className="p-4">
-                                                <span
-                                                    className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                                                        u.role === "admin"
-                                                            ? "bg-red-100 text-red-700"
-                                                            : u.role === "user"
-                                                                ? "bg-blue-100 text-blue-700"
-                                                                : "bg-gray-100 text-gray-700"
-                                                    }`}
-                                                >
+                                                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                                    u.role === "admin"
+                                                        ? "bg-red-100 text-red-700"
+                                                        : u.role === "user"
+                                                        ? "bg-blue-100 text-blue-700"
+                                                        : "bg-gray-100 text-gray-700"
+                                                }`}>
                                                     {u.role?.charAt(0).toUpperCase() + u.role?.slice(1)}
                                                 </span>
                                             </td>
+
+                                            {/* Actions */}
                                             <td className="p-4">
                                                 <div className="flex justify-end gap-2">
                                                     <button
@@ -403,7 +395,6 @@ export default function UserManagementPage() {
                                                     >
                                                         <Pencil className="w-5 h-5" />
                                                     </button>
-
                                                     <button
                                                         className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all hover:scale-110"
                                                         title="Delete User"
@@ -428,18 +419,10 @@ export default function UserManagementPage() {
                         className="group relative px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:from-green-700 hover:to-emerald-800 transition-all duration-300 flex items-center gap-2 overflow-hidden"
                     >
                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-green-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-
-                        <svg
-                            className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-300"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
+                        <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
-
                         <span className="relative z-10">Go Back</span>
-
                         <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"></div>
                     </button>
                 </div>

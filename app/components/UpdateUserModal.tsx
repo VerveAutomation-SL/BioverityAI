@@ -3,7 +3,80 @@
 import { useState, useEffect } from "react";
 import { X, Save, User, Mail, Shield, ImageIcon, Upload, Key, Lock, Globe } from "lucide-react";
 import toast from "react-hot-toast";
-import { supabase } from "@/lib/supabaseClient"; // ✅ ADDED
+import { supabase } from "@/lib/supabaseClient";
+import ReactCountryFlag from "react-country-flag";
+import Select from "react-select";
+// @ts-ignore
+import countryList from "country-list";
+
+interface CountryOption {
+  value: string;
+  label: string;
+}
+
+const countryOptions: CountryOption[] = countryList.getData().map(
+  (c: { code: string; name: string }) => ({
+    value: c.code,
+    label: c.name,
+  })
+);
+
+function CountrySelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const selected: CountryOption | null =
+    countryOptions.find((o: CountryOption) => o.label === value) || null;
+
+  return (
+    <Select<CountryOption>
+      options={countryOptions}
+      value={selected}
+      onChange={(opt) => onChange(opt?.label || "")}
+      placeholder="Select Country"
+      isSearchable
+      formatOptionLabel={(opt: CountryOption) => (
+        <div className="flex items-center gap-2">
+          <ReactCountryFlag
+            countryCode={opt.value}
+            svg
+            style={{ width: "1.2em", height: "1.2em" }}
+          />
+          <span>{opt.label}</span>
+        </div>
+      )}
+      styles={{
+        control: (base, state) => ({
+          ...base,
+          borderRadius: "0.75rem",
+          borderWidth: "2px",
+          borderColor: state.isFocused ? "#10b981" : "#e5e7eb",
+          boxShadow: "none",
+          padding: "2px",
+          "&:hover": { borderColor: "#10b981" },
+        }),
+        menu: (base) => ({
+          ...base,
+          borderRadius: "0.75rem",
+          overflow: "hidden",
+          zIndex: 50,
+        }),
+        option: (base, state) => ({
+          ...base,
+          backgroundColor: state.isSelected
+            ? "#d1fae5"
+            : state.isFocused
+            ? "#f0fdf4"
+            : "white",
+          color: state.isSelected ? "#065f46" : "#334155",
+        }),
+      }}
+    />
+  );
+}
 
 interface UpdateUserModalProps {
   user: any;
@@ -19,6 +92,7 @@ export default function UpdateUserModal({
   const [username, setUsername] = useState(user.username || "");
   const [email, setEmail] = useState(user.email || "");
   const [role, setRole] = useState(user.role || "user");
+  const [country, setCountry] = useState(user.country || "");
   const [organizationLogo, setOrganizationLogo] = useState(user.organization_logo || "");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -26,7 +100,6 @@ export default function UpdateUserModal({
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
 
-  // Tuya Configuration State (with region)
   const [tuyaConfig, setTuyaConfig] = useState({
     accessId: "",
     accessSecret: "",
@@ -35,7 +108,6 @@ export default function UpdateUserModal({
     region: "sg",
   });
 
-  // Track if user already has Door service config
   const [hasDoorConfig, setHasDoorConfig] = useState(false);
 
   useEffect(() => {
@@ -50,9 +122,7 @@ export default function UpdateUserModal({
       const userServicesRes = await fetch(`/api/user-services?user_id=${user.id}`);
       const userServicesData = await userServicesRes.json();
 
-      if (servicesRes.ok && servicesData) {
-        setAllServices(servicesData);
-      }
+      if (servicesRes.ok && servicesData) setAllServices(servicesData);
 
       if (userServicesRes.ok && userServicesData.services) {
         const enabledKeys = userServicesData.services.map((s: any) => s.service_key);
@@ -67,31 +137,23 @@ export default function UpdateUserModal({
     }
   }
 
-  // ✅ FIXED: Real Supabase upload instead of blob URL
   async function handleLogoUpload(file: File) {
     setUploadingLogo(true);
-
     try {
       const ext = file.name.split(".").pop();
       const fileName = `logos/${crypto.randomUUID()}.${ext}`;
 
-      const { error } = await supabase.storage
-        .from("products")
-        .upload(fileName, file, {
-          contentType: file.type,
-          upsert: false,
-        });
+      const { error } = await supabase.storage.from("products").upload(fileName, file, {
+        contentType: file.type,
+        upsert: false,
+      });
 
       if (error) throw error;
 
-      const { data } = supabase.storage
-        .from("products")
-        .getPublicUrl(fileName);
-
-      setOrganizationLogo(data.publicUrl); // ✅ permanent public URL
+      const { data } = supabase.storage.from("products").getPublicUrl(fileName);
+      setOrganizationLogo(data.publicUrl);
       toast.success("Logo uploaded successfully!");
     } catch (err: any) {
-      console.error("Failed to upload logo:", err);
       toast.error("Failed to upload logo");
     } finally {
       setUploadingLogo(false);
@@ -116,6 +178,7 @@ export default function UpdateUserModal({
           email,
           role,
           organization_logo: organizationLogo,
+          country,
         }),
       });
 
@@ -143,7 +206,7 @@ export default function UpdateUserModal({
         return;
       }
 
-      // 3️⃣ Update Door Control config if selected and fields filled
+      // 3️⃣ Update Door Control config if selected
       if (selectedServices.includes("door_control")) {
         const wantsToSaveConfig =
           tuyaConfig.accessId.trim() ||
@@ -191,7 +254,6 @@ export default function UpdateUserModal({
       onUpdated();
       onClose();
     } catch (err) {
-      console.error(err);
       toast.error("Something went wrong");
     } finally {
       setLoading(false);
@@ -219,13 +281,12 @@ export default function UpdateUserModal({
         {/* Body */}
         <div className="p-6 space-y-5">
 
-          {/* Organization Logo Upload */}
+          {/* Organization Logo */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-emerald-600" />
               Organization Logo
             </label>
-
             <div className="flex items-center gap-4">
               {organizationLogo ? (
                 <img
@@ -238,16 +299,11 @@ export default function UpdateUserModal({
                   No Logo
                 </div>
               )}
-
               <div className="flex-1">
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      handleLogoUpload(e.target.files[0]);
-                    }
-                  }}
+                  onChange={(e) => { if (e.target.files?.[0]) handleLogoUpload(e.target.files[0]); }}
                   disabled={uploadingLogo}
                   className="text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 file:cursor-pointer disabled:opacity-50"
                 />
@@ -293,6 +349,15 @@ export default function UpdateUserModal({
             </div>
           </div>
 
+          {/* ✅ Country */}
+          <div>
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <Globe className="w-4 h-4 text-emerald-600" />
+              Country
+            </label>
+            <CountrySelect value={country} onChange={setCountry} />
+          </div>
+
           {/* Role */}
           <div>
             <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
@@ -314,19 +379,13 @@ export default function UpdateUserModal({
 
           {/* Enabled Services */}
           <div>
-            <label className="text-sm font-semibold text-gray-700 mb-2 block">
-              Enabled Services
-            </label>
-
+            <label className="text-sm font-semibold text-gray-700 mb-2 block">Enabled Services</label>
             {loadingServices ? (
               <p className="text-sm text-gray-500">Loading services...</p>
             ) : (
               <div className="space-y-2">
                 {allServices.map((service) => (
-                  <label
-                    key={service.key}
-                    className="flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer hover:bg-emerald-50 transition-all"
-                  >
+                  <label key={service.key} className="flex items-start gap-3 p-3 border-2 rounded-xl cursor-pointer hover:bg-emerald-50 transition-all">
                     <input
                       type="checkbox"
                       checked={selectedServices.includes(service.key)}
@@ -353,7 +412,6 @@ export default function UpdateUserModal({
                     </div>
                   </label>
                 ))}
-
                 {allServices.length === 0 && (
                   <p className="text-sm text-gray-500">No service available.</p>
                 )}
@@ -361,7 +419,7 @@ export default function UpdateUserModal({
             )}
           </div>
 
-          {/* Tuya Door Service Configuration - Conditional */}
+          {/* Tuya Door Service Configuration */}
           {selectedServices.includes("door_control") && (
             <div className="space-y-3 border-2 border-emerald-200 bg-emerald-50 p-4 rounded-xl">
               <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-2 mb-3">
@@ -463,7 +521,6 @@ export default function UpdateUserModal({
           >
             Cancel
           </button>
-
           <button
             onClick={handleUpdate}
             disabled={loading || uploadingLogo}

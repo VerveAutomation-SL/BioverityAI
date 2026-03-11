@@ -3,26 +3,27 @@ import { supabase } from "@/lib/supabaseClient";
 
 export async function POST(req: Request) {
   try {
-    const { id, username, role, email, organization_logo } = await req.json();
+    const { id, username, role, email, organization_logo, country } = await req.json();
 
     if (!id || !username || !role) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Build update object dynamically
     const updateData: any = {
       username,
       role,
     };
 
-    // Only update email if provided
     if (email) {
       updateData.email = email;
     }
 
-    // Only update organization_logo if provided (allow empty string to clear logo)
     if (organization_logo !== undefined) {
       updateData.organization_logo = organization_logo;
+    }
+
+    if (country !== undefined) {
+      updateData.country = country;
     }
 
     const { error } = await supabase

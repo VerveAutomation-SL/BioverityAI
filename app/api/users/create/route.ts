@@ -11,11 +11,16 @@ export async function POST(req: Request) {
       username,
       org_id,
       role,
-      services, // NEW
+      country,
+      services,
     } = await req.json();
 
     if (!email || !password || !full_name || !username || !org_id || !role) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    if (!country) {
+      return NextResponse.json({ error: "Country is required" }, { status: 400 });
     }
 
     const { data: authData, error: authError } =
@@ -40,6 +45,7 @@ export async function POST(req: Request) {
         org_id,
         role,
         organization_logo: logo_url,
+        country,
       });
 
     if (profileError) {
@@ -68,22 +74,6 @@ export async function POST(req: Request) {
           { status: 500 }
         );
       }
-    }
-
-    const { error: serviceError } = await supabase
-      .from("user_services")
-      .insert(
-        selectedServices.map((service) => ({
-          user_id: userId,
-          service_key: service,
-        }))
-      );
-
-    if (serviceError) {
-      return NextResponse.json(
-        { error: serviceError.message },
-        { status: 500 }
-      );
     }
 
     return NextResponse.json({ success: true }, { status: 200 });
