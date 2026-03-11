@@ -10,12 +10,20 @@ export async function POST(req: Request) {
       department,
       role,
       photo_url,
+      country,
     } = await req.json();
 
     // 1️⃣ Validate input
     if (!org_id || !employee_id || !full_name || !department || !role) {
       return NextResponse.json(
         { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    if (!country) {
+      return NextResponse.json(
+        { error: "Country is required" },
         { status: 400 }
       );
     }
@@ -30,6 +38,7 @@ export async function POST(req: Request) {
         department,
         role,
         photo_url,
+        country,
       })
       .select()
       .single();

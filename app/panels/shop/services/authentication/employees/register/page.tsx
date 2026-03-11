@@ -6,6 +6,13 @@ import { useRouter } from "next/navigation";
 import EmployeeRegistrationForm from "@/app/components/EmployeeRegistrationForm";
 import UpdateEmployeeForm from "@/app/components/UpdateEmployeeForm";
 import { UserPlus, Users, CheckCircle2, Eye, Edit, Trash2, Loader2, XCircle } from "lucide-react";
+import ReactCountryFlag from "react-country-flag";
+// @ts-ignore
+import countryList from "country-list";
+
+const nameToCode: Record<string, string> = Object.fromEntries(
+  countryList.getData().map((c: { code: string; name: string }) => [c.name, c.code])
+);
 
 interface Employee {
   id: string;
@@ -13,6 +20,7 @@ interface Employee {
   full_name: string;
   department: string;
   role: string;
+  country?: string | null;
   photo_url?: string;
   created_at: string;
   biometric_enrollments?: Array<{
@@ -36,7 +44,6 @@ export default function EmployeeRegistrationPage() {
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
-
       if (!user) return router.replace("/login");
 
       const { data: prof } = await supabase
@@ -45,13 +52,10 @@ export default function EmployeeRegistrationPage() {
         .eq("id", user.id)
         .single();
 
-      if (!prof || prof.role !== "user") {
-        return router.replace("/login");
-      }
+      if (!prof || prof.role !== "user") return router.replace("/login");
 
       setProfile(prof);
       setLoading(false);
-      
       fetchEmployees(prof.org_id);
     })();
   }, []);
@@ -59,16 +63,10 @@ export default function EmployeeRegistrationPage() {
   const fetchEmployees = async (orgId: string) => {
     try {
       setEmployeesLoading(true);
-      
       const response = await fetch(`/api/employees/fetch?org_id=${orgId}`);
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch employees");
-      }
-
+      if (!response.ok) throw new Error("Failed to fetch employees");
       const data = await response.json();
       setEmployees(data.employees || []);
-      
     } catch (err) {
       console.error("Error fetching employees:", err);
     } finally {
@@ -77,27 +75,20 @@ export default function EmployeeRegistrationPage() {
   };
 
   const handleDelete = async (employeeId: string) => {
-    if (!confirm("Are you sure you want to delete this employee? This action cannot be undone.")) {
-      return;
-    }
+    if (!confirm("Are you sure you want to delete this employee? This action cannot be undone.")) return;
 
     try {
       setDeletingId(employeeId);
-
-      const response = await fetch(`/api/employees/delete?employee_id=${employeeId}&org_id=${profile.org_id}`, {
-        method: "DELETE",
-      });
-
+      const response = await fetch(
+        `/api/employees/delete?employee_id=${employeeId}&org_id=${profile.org_id}`,
+        { method: "DELETE" }
+      );
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to delete employee");
       }
-
-      // Remove employee from state
       setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
-      
     } catch (err: any) {
-      console.error("Error deleting employee:", err);
       alert(err.message || "Failed to delete employee");
     } finally {
       setDeletingId(null);
@@ -115,15 +106,11 @@ export default function EmployeeRegistrationPage() {
   };
 
   const handleRegistrationSuccess = (): void => {
-    if (profile?.org_id) {
-      fetchEmployees(profile.org_id);
-    }
+    if (profile?.org_id) fetchEmployees(profile.org_id);
   };
 
   const handleUpdateSuccess = (): void => {
-    if (profile?.org_id) {
-      fetchEmployees(profile.org_id);
-    }
+    if (profile?.org_id) fetchEmployees(profile.org_id);
     setShowEditModal(false);
   };
 
@@ -135,7 +122,9 @@ export default function EmployeeRegistrationPage() {
     );
   }
 
-  const activeCount = employees.filter(e => e.biometric_enrollments && e.biometric_enrollments.length > 0).length;
+  const activeCount = employees.filter(
+    e => e.biometric_enrollments && e.biometric_enrollments.length > 0
+  ).length;
 
   return (
     <div className="space-y-8">
@@ -166,9 +155,7 @@ export default function EmployeeRegistrationPage() {
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
               <Users className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-800">
-              Registered Employees
-            </h2>
+            <h2 className="text-2xl font-bold text-slate-800">Registered Employees</h2>
           </div>
         </div>
 
@@ -195,6 +182,7 @@ export default function EmployeeRegistrationPage() {
                   <th className="p-4 font-semibold">Name</th>
                   <th className="p-4 font-semibold">Department</th>
                   <th className="p-4 font-semibold">Role</th>
+                  <th className="p-4 font-semibold">Country</th>
                   <th className="p-4 font-semibold">Status</th>
                   <th className="p-4 font-semibold">Actions</th>
                 </tr>
@@ -202,7 +190,8 @@ export default function EmployeeRegistrationPage() {
               <tbody>
                 {employees.map((emp) => {
                   const isActive = emp.biometric_enrollments && emp.biometric_enrollments.length > 0;
-                  
+                  const countryCode = emp.country ? nameToCode[emp.country] : null;
+
                   return (
                     <tr key={emp.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                       <td className="p-4">
@@ -220,36 +209,51 @@ export default function EmployeeRegistrationPage() {
                       </td>
                       <td className="p-4 text-slate-600">{emp.department}</td>
                       <td className="p-4 text-slate-600">{emp.role}</td>
+
+                      {/* ✅ Country column */}
+                      <td className="p-4">
+                        {emp.country && countryCode ? (
+                          <div className="flex items-center gap-2">
+                            <ReactCountryFlag
+                              countryCode={countryCode}
+                              svg
+                              style={{ width: "1.2em", height: "1.2em" }}
+                            />
+                            <span className="text-sm text-slate-700">{emp.country}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-400">—</span>
+                        )}
+                      </td>
+
                       <td className="p-4">
                         {isActive ? (
                           <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-semibold">
-                            <CheckCircle2 className="w-4 h-4" />
-                            Active
+                            <CheckCircle2 className="w-4 h-4" /> Active
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-sm font-semibold">
-                            <XCircle className="w-4 h-4" />
-                            Inactive
+                            <XCircle className="w-4 h-4" /> Inactive
                           </span>
                         )}
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          <button 
+                          <button
                             onClick={() => handleView(emp)}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="View Details"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleEdit(emp)}
                             className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                             title="Edit Employee"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleDelete(emp.id)}
                             disabled={deletingId === emp.id}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -271,10 +275,9 @@ export default function EmployeeRegistrationPage() {
           </div>
         )}
 
-        {/* Table Footer */}
         {!employeesLoading && employees.length > 0 && (
           <div className="p-4 border-t border-slate-200 bg-slate-50 text-sm text-slate-600 text-center">
-            Showing {employees.length} employee{employees.length !== 1 ? 's' : ''} • 
+            Showing {employees.length} employee{employees.length !== 1 ? "s" : ""} •
             <span className="text-emerald-600 font-semibold ml-1">{activeCount} Active</span>
           </div>
         )}
@@ -324,13 +327,31 @@ export default function EmployeeRegistrationPage() {
                   <label className="text-sm font-semibold text-slate-600">Role</label>
                   <p className="text-lg text-slate-800 mt-1">{selectedEmployee.role}</p>
                 </div>
+
+                {/* ✅ Country in modal */}
+                <div>
+                  <label className="text-sm font-semibold text-slate-600">Country</label>
+                  <div className="mt-1">
+                    {selectedEmployee.country && nameToCode[selectedEmployee.country] ? (
+                      <div className="flex items-center gap-2">
+                        <ReactCountryFlag
+                          countryCode={nameToCode[selectedEmployee.country]}
+                          svg
+                          style={{ width: "1.4em", height: "1.4em" }}
+                        />
+                        <span className="text-lg text-slate-800">{selectedEmployee.country}</span>
+                      </div>
+                    ) : (
+                      <p className="text-lg text-slate-400">—</p>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <label className="text-sm font-semibold text-slate-600">Registration Date</label>
                   <p className="text-lg text-slate-800 mt-1">
-                    {new Date(selectedEmployee.created_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
+                    {new Date(selectedEmployee.created_at).toLocaleDateString("en-US", {
+                      year: "numeric", month: "long", day: "numeric",
                     })}
                   </p>
                 </div>
@@ -345,7 +366,7 @@ export default function EmployeeRegistrationPage() {
                       <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
                         <span className="text-slate-700 font-medium capitalize">{enrollment.biometric_type}</span>
                         <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                          enrollment.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                          enrollment.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
                         }`}>
                           {enrollment.status}
                         </span>

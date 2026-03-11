@@ -29,6 +29,7 @@ export async function GET(req: Request) {
         department,
         role,
         photo_url,
+        country,
         created_at,
         biometric_enrollments (
           biometric_type,

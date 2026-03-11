@@ -10,6 +10,7 @@ export async function PUT(req: Request) {
       department,
       role,
       photo_url,
+      country,
     } = await req.json();
 
     // 1️⃣ Validate
@@ -28,6 +29,7 @@ export async function PUT(req: Request) {
         department,
         role,
         photo_url,
+        country,
       })
       .eq("id", employee_id)
       .eq("org_id", org_id)
