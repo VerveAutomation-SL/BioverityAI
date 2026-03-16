@@ -102,7 +102,6 @@ export default function UserManagementPage() {
                 [userId]: data.services.map((s: any) => s.services?.name),
             }));
         } catch {
-            // silent fail
         }
     }
 
@@ -130,6 +129,12 @@ export default function UserManagementPage() {
     }
 
     async function deleteUser(id: string) {
+        const userToDelete = users.find((u) => u.id === id);
+        if (userToDelete?.role === "admin") {
+            toast.error("Admin users cannot be deleted.");
+            return;
+        }
+
         if (!confirm("Are you sure you want to delete this user?")) return;
 
         const res = await apiFetch("/api/users/delete", {
@@ -325,7 +330,6 @@ export default function UserManagementPage() {
                                                                 {u.email}
                                                             </p>
                                                         )}
-                                                        {/* ✅ Fixed: unique key using userId + index + service name */}
                                                         {userServices[u.id] && (
                                                             <div className="flex flex-wrap gap-1 mt-1">
                                                                 {userServices[u.id].map((name, idx) => (
@@ -396,9 +400,18 @@ export default function UserManagementPage() {
                                                         <Pencil className="w-5 h-5" />
                                                     </button>
                                                     <button
-                                                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all hover:scale-110"
-                                                        title="Delete User"
-                                                        onClick={() => deleteUser(u.id)}
+                                                        className={`p-2 rounded-lg transition-all ${
+                                                            u.role === "admin"
+                                                                ? "text-gray-300 cursor-not-allowed opacity-50"
+                                                                : "text-red-600 hover:bg-red-100 hover:scale-110"
+                                                        }`}
+                                                        title={
+                                                            u.role === "admin"
+                                                                ? "Admin users cannot be deleted"
+                                                                : "Delete User"
+                                                        }
+                                                        onClick={() => u.role !== "admin" && deleteUser(u.id)}
+                                                        disabled={u.role === "admin"}
                                                     >
                                                         <Trash2 className="w-5 h-5" />
                                                     </button>

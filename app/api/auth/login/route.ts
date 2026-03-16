@@ -1,37 +1,54 @@
 import { NextResponse } from "next/server";
-import { withCors, corsOptions } from "@/lib/cors";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+const allowedOrigins = [
+  "https://thk-org.onrender.com",
+  "http://localhost:3000",
+];
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") || "";
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+  if (allowedOrigins.includes(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+  return headers;
+}
+
 export function OPTIONS(req: Request) {
-  return corsOptions(req);
+  return new Response(null, { headers: getCorsHeaders(req) });
 }
 
 export async function POST(req: Request) {
+  const headers = getCorsHeaders(req);
+
   try {
     const body = await req.json();
     const { orgId, username, password, debug } = body;
 
     if (debug === true) {
-      return withCors(
-        {
+      return new Response(
+        JSON.stringify({
           debug: true,
           received_orgId: orgId ?? null,
           received_username: username ?? null,
           env_supabase_url: SUPABASE_URL ?? "undefined",
           env_anon_key: ANON_KEY ? "loaded" : "missing",
-        },
-        200,
-        req
+        }),
+        { status: 200, headers }
       );
     }
 
     if (!orgId || !username || !password) {
-      return withCors(
-        { errorCode: "MISSING_FIELDS", error: "Missing fields" },
-        400,
-        req
+      return new Response(
+        JSON.stringify({ errorCode: "MISSING_FIELDS", error: "Missing fields" }),
+        { status: 400, headers }
       );
     }
 
@@ -53,10 +70,9 @@ export async function POST(req: Request) {
     const orgCheck = await orgCheckRes.json();
 
     if (!Array.isArray(orgCheck) || orgCheck.length === 0) {
-      return withCors(
-        { errorCode: "ORG_NOT_FOUND", error: "Organization not found" },
-        401,
-        req
+      return new Response(
+        JSON.stringify({ errorCode: "ORG_NOT_FOUND", error: "Organization not found" }),
+        { status: 401, headers }
       );
     }
 
@@ -77,10 +93,9 @@ export async function POST(req: Request) {
     const profile = profiles?.[0];
 
     if (!profile) {
-      return withCors(
-        { errorCode: "USER_NOT_FOUND", error: "Username not found" },
-        401,
-        req
+      return new Response(
+        JSON.stringify({ errorCode: "USER_NOT_FOUND", error: "Username not found" }),
+        { status: 401, headers }
       );
     }
 
@@ -102,31 +117,21 @@ export async function POST(req: Request) {
     const tokenJson = await tokenRes.json();
 
     if (!tokenRes.ok) {
-      return withCors(
-        { errorCode: "INVALID_PASSWORD", error: "Incorrect password" },
-        401,
-        req
+      return new Response(
+        JSON.stringify({ errorCode: "INVALID_PASSWORD", error: "Incorrect password" }),
+        { status: 401, headers }
       );
     }
 
-    return withCors(
-      {
-        success: true,
-        token: tokenJson,
-        profile,
-      },
-      200,
-      req
+    return new Response(
+      JSON.stringify({ success: true, token: tokenJson, profile }),
+      { status: 200, headers }
     );
+
   } catch (err: any) {
-    return withCors(
-      {
-        errorCode: "SERVER_ERROR",
-        error: "Server error",
-        detail: err.message,
-      },
-      500,
-      req
+    return new Response(
+      JSON.stringify({ errorCode: "SERVER_ERROR", error: "Server error", detail: err.message }),
+      { status: 500, headers }
     );
   }
 }
