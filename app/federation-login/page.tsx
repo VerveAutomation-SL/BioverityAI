@@ -21,7 +21,7 @@ function FederationContent() {
       access_token,
       refresh_token,
     }).then(() => {
-      router.push("/panels/admin");
+      router.push("/panels/shop/services/authentication");
     });
   }, []);
 
