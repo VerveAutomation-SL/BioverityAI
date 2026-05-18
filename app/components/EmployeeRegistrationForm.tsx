@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { UserPlus, Upload, Plus, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { UserPlus, Upload, Plus, X, ChevronDown, Pencil, Trash2, Check } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import ReactCountryFlag from "react-country-flag";
 import Select from "react-select";
@@ -82,6 +82,220 @@ function CountrySelect({
   );
 }
 
+// ─── Custom Department Dropdown ───────────────────────────────────────────────
+function DepartmentDropdown({
+  departments,
+  department,
+  setDepartment,
+  editingDepartment,
+  setEditingDepartment,
+  editedDepartmentName,
+  setEditedDepartmentName,
+  onUpdate,
+  onDelete,
+  showAddDept,
+  setShowAddDept,
+  newDeptName,
+  setNewDeptName,
+  onAdd,
+}: {
+  departments: string[];
+  department: string;
+  setDepartment: (v: string) => void;
+  editingDepartment: string | null;
+  setEditingDepartment: (v: string | null) => void;
+  editedDepartmentName: string;
+  setEditedDepartmentName: (v: string) => void;
+  onUpdate: (oldName: string) => void;
+  onDelete: (name: string) => void;
+  showAddDept: boolean;
+  setShowAddDept: (v: boolean) => void;
+  newDeptName: string;
+  setNewDeptName: (v: string) => void;
+  onAdd: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      {/* ── Trigger button ── */}
+      <div
+        className={`
+          flex items-center justify-between w-full
+          border-2 rounded-xl px-4 py-3 bg-white cursor-pointer select-none
+          transition-all duration-200
+          ${open
+            ? "border-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]"
+            : "border-slate-200 hover:border-slate-300"
+          }
+        `}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className={department ? "text-slate-800 font-medium text-sm" : "text-slate-400 text-sm"}>
+          {department || "Select Department"}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 transition-transform duration-300 ${
+            open ? "rotate-180 text-emerald-500" : "text-slate-400"
+          }`}
+        />
+      </div>
+
+      {/* ── Dropdown panel ── */}
+      {open && (
+        <div className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
+
+          {/* Department rows */}
+          <div className="max-h-48 overflow-y-auto">
+            {departments.length === 0 && (
+              <p className="text-center text-xs text-slate-400 py-6">No departments yet</p>
+            )}
+
+            {departments.map((dept, i) => (
+              <div
+                key={dept}
+                className={`
+                  group flex items-center gap-2 px-3 py-2.5 transition-colors
+                  ${i !== 0 ? "border-t border-slate-100" : ""}
+                  ${department === dept ? "bg-emerald-50" : "hover:bg-slate-50"}
+                `}
+              >
+                {editingDepartment === dept ? (
+                  /* Edit mode */
+                  <div className="flex items-center gap-2 w-full">
+                    <input
+                      autoFocus
+                      value={editedDepartmentName}
+                      onChange={(e) => setEditedDepartmentName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") onUpdate(dept);
+                        if (e.key === "Escape") {
+                          setEditingDepartment(null);
+                          setEditedDepartmentName("");
+                        }
+                      }}
+                      className="flex-1 text-sm border border-emerald-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onUpdate(dept)}
+                      className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setEditingDepartment(null); setEditedDepartmentName(""); }}
+                      className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  /* Normal mode */
+                  <>
+                    {/* Dot indicator for selected */}
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors ${department === dept ? "bg-emerald-500" : "bg-transparent"}`} />
+
+                    {/* Name — clicking selects */}
+                    <button
+                      type="button"
+                      className="flex-1 text-left text-sm font-medium text-slate-700"
+                      onClick={() => { setDepartment(dept); setOpen(false); }}
+                    >
+                      {dept}
+                    </button>
+
+                    {/* Action icons — appear on row hover */}
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingDepartment(dept);
+                          setEditedDepartmentName(dept);
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-500 transition-colors"
+                        title="Rename"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onDelete(dept); }}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* ── Add department footer ── */}
+          <div className="border-t border-slate-100 bg-slate-50/80 px-3 py-2.5">
+            {!showAddDept ? (
+              <button
+                type="button"
+                onClick={() => setShowAddDept(true)}
+                className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-emerald-600 transition-colors py-1 rounded-lg hover:bg-emerald-50"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add New Department
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  type="text"
+                  value={newDeptName}
+                  onChange={(e) => setNewDeptName(e.target.value)}
+                  placeholder="Department name…"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") onAdd();
+                    if (e.key === "Escape") { setShowAddDept(false); setNewDeptName(""); }
+                  }}
+                  className="flex-1 text-sm border-2 border-slate-200 rounded-xl px-3 py-1.5 focus:border-emerald-400 focus:outline-none transition-colors bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={onAdd}
+                  className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-colors text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddDept(false); setNewDeptName(""); }}
+                  className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-500 rounded-xl transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Form ────────────────────────────────────────────────────────────────
 export default function EmployeeRegistrationForm({
   orgId,
   onSuccess,
@@ -100,19 +314,17 @@ export default function EmployeeRegistrationForm({
   ]);
   const [showAddDept, setShowAddDept] = useState(false);
   const [newDeptName, setNewDeptName] = useState("");
+  const [editingDepartment, setEditingDepartment] = useState<string | null>(null);
+  const [editedDepartmentName, setEditedDepartmentName] = useState("");
 
-  useEffect(() => {
-    loadDepartments();
-  }, [orgId]);
+  useEffect(() => { loadDepartments(); }, [orgId]);
 
   async function loadDepartments() {
     try {
       const res = await fetch(`/api/departments?org_id=${orgId}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.departments && data.departments.length > 0) {
-          setDepartments(data.departments);
-        }
+        if (data.departments?.length > 0) setDepartments(data.departments);
       }
     } catch (error) {
       console.error("Failed to load departments:", error);
@@ -122,14 +334,12 @@ export default function EmployeeRegistrationForm({
   async function handleAddDepartment() {
     if (!newDeptName.trim()) { alert("Please enter a department name"); return; }
     if (departments.includes(newDeptName.trim())) { alert("This department already exists"); return; }
-
     try {
       const res = await fetch("/api/departments/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ org_id: orgId, name: newDeptName.trim() }),
       });
-
       if (res.ok) {
         setDepartments([...departments, newDeptName.trim()]);
         setDepartment(newDeptName.trim());
@@ -139,9 +349,40 @@ export default function EmployeeRegistrationForm({
         const data = await res.json();
         alert(data.error || "Failed to add department");
       }
-    } catch (error) {
-      alert("Failed to add department");
-    }
+    } catch { alert("Failed to add department"); }
+  }
+
+  async function handleUpdateDepartment(oldName: string) {
+    try {
+      const res = await fetch("/api/departments/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ org_id: orgId, old_name: oldName, new_name: editedDepartmentName }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || "Failed to update department"); return; }
+      setDepartments(departments.map((d) => (d === oldName ? editedDepartmentName : d)));
+      if (department === oldName) setDepartment(editedDepartmentName);
+      setEditingDepartment(null);
+      setEditedDepartmentName("");
+      alert("Department updated successfully");
+    } catch { alert("Failed to update department"); }
+  }
+
+  async function handleDeleteDepartment(deptName: string) {
+    if (!confirm(`Delete "${deptName}" department?`)) return;
+    try {
+      const res = await fetch("/api/departments/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ org_id: orgId, name: deptName }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || "Failed to delete"); return; }
+      setDepartments(departments.filter((d) => d !== deptName));
+      if (department === deptName) setDepartment("");
+      alert("Department deleted");
+    } catch { alert("Failed to delete department"); }
   }
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,12 +411,10 @@ export default function EmployeeRegistrationForm({
       alert("Please fill all required fields");
       return;
     }
-
     setLoading(true);
     try {
       let photoUrl = null;
       if (photo) photoUrl = await uploadEmployeePhoto(photo);
-
       const res = await fetch("/api/employees/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -189,32 +428,18 @@ export default function EmployeeRegistrationForm({
           country,
         }),
       });
-
       const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Failed to register employee");
-        setLoading(false);
-        return;
-      }
-
+      if (!res.ok) { alert(data.error || "Failed to register employee"); setLoading(false); return; }
       alert("Employee registered successfully!");
       resetForm();
       if (onSuccess) onSuccess();
-      setLoading(false);
-    } catch (error) {
-      alert("Failed to register employee");
-      setLoading(false);
-    }
+    } catch { alert("Failed to register employee"); }
+    setLoading(false);
   }
 
   function resetForm() {
-    setFullName("");
-    setEmployeeId("");
-    setDepartment("");
-    setRole("");
-    setCountry("");
-    setPhoto(null);
-    setPhotoPreview(null);
+    setFullName(""); setEmployeeId(""); setDepartment(""); setRole("");
+    setCountry(""); setPhoto(null); setPhotoPreview(null);
   }
 
   return (
@@ -235,11 +460,7 @@ export default function EmployeeRegistrationForm({
           <div className="relative">
             {photoPreview ? (
               <div className="relative group">
-                <img
-                  src={photoPreview}
-                  alt="Employee"
-                  className="w-full h-64 object-cover rounded-2xl border-2 border-slate-200"
-                />
+                <img src={photoPreview} alt="Employee" className="w-full h-64 object-cover rounded-2xl border-2 border-slate-200" />
                 <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
                   <button
                     onClick={() => { setPhoto(null); setPhotoPreview(null); }}
@@ -262,8 +483,6 @@ export default function EmployeeRegistrationForm({
 
         {/* Form Fields */}
         <div className="lg:col-span-2 space-y-6">
-
-          {/* Employee ID & Full Name */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Employee ID *</label>
@@ -287,66 +506,31 @@ export default function EmployeeRegistrationForm({
             </div>
           </div>
 
-          {/* Country — below Full Name row */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">Country *</label>
             <CountrySelect value={country} onChange={setCountry} />
           </div>
 
-          {/* Department & Role */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Department *</label>
-              <div className="space-y-3">
-                <select
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full border-2 border-slate-200 rounded-xl p-3 focus:border-emerald-500 focus:outline-none transition-colors"
-                >
-                  <option value="">Select Department</option>
-                  {departments.map((dept) => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </select>
-
-                {!showAddDept ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddDept(true)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-slate-300 rounded-xl text-sm font-semibold text-slate-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add New Department
-                  </button>
-                ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newDeptName}
-                      onChange={(e) => setNewDeptName(e.target.value)}
-                      placeholder="Department name"
-                      className="flex-1 border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-emerald-500 focus:outline-none"
-                      onKeyPress={(e) => { if (e.key === "Enter") handleAddDepartment(); }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddDepartment}
-                      className="px-3 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setShowAddDept(false); setNewDeptName(""); }}
-                      className="px-3 py-2 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
+              <DepartmentDropdown
+                departments={departments}
+                department={department}
+                setDepartment={setDepartment}
+                editingDepartment={editingDepartment}
+                setEditingDepartment={setEditingDepartment}
+                editedDepartmentName={editedDepartmentName}
+                setEditedDepartmentName={setEditedDepartmentName}
+                onUpdate={handleUpdateDepartment}
+                onDelete={handleDeleteDepartment}
+                showAddDept={showAddDept}
+                setShowAddDept={setShowAddDept}
+                newDeptName={newDeptName}
+                setNewDeptName={setNewDeptName}
+                onAdd={handleAddDepartment}
+              />
             </div>
-
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Role *</label>
               <input

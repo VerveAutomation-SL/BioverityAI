@@ -43,18 +43,20 @@ export async function POST(req: Request) {
     });
 
     // 2️⃣ Check if this employee already has a log today (org local time)
-    const nowLocal = new Date(now.toLocaleString("en-US", { timeZone: orgTimezone }));
-    const todayLocal = nowLocal.toISOString().slice(0, 10);
-    const startOfDay = `${todayLocal}T00:00:00`;
-    const endOfDay = `${todayLocal}T23:59:59`;
+    const localDateString = now.toLocaleDateString("en-CA", {
+      timeZone: orgTimezone,
+    });
+
+    const startOfDay = `${localDateString}T00:00:00`;
+    const endOfDay = `${localDateString}T23:59:59`;
 
     const { data: existingLogs } = await supabase
       .from("attendance_logs")
       .select("id")
       .eq("employee_id", employee_id)
       .eq("org_id", employee.org_id)
-      .gte("event_time", startOfDay)
-      .lte("event_time", endOfDay);
+      .gte("event_time", new Date(startOfDay).toISOString())
+      .lte("event_time", new Date(endOfDay).toISOString());
 
     const isFirstCheckIn = !existingLogs || existingLogs.length === 0;
 
