@@ -42,23 +42,21 @@ export async function POST(req: Request) {
       timeZone: orgTimezone,
     });
 
-    // 2️⃣ Check if this employee already has a log today (org local time)
-    const localDateString = now.toLocaleDateString("en-CA", {
+    // 2️⃣ Check notification state instead of attendance logs
+
+    const attendanceDate = now.toLocaleDateString("en-CA", {
       timeZone: orgTimezone,
     });
 
-    const startOfDay = `${localDateString}T00:00:00`;
-    const endOfDay = `${localDateString}T23:59:59`;
-
-    const { data: existingLogs } = await supabase
-      .from("attendance_logs")
+    const { data: existingNotification } = await supabase
+      .from("attendance_notification_state")
       .select("id")
       .eq("employee_id", employee_id)
       .eq("org_id", employee.org_id)
-      .gte("event_time", new Date(startOfDay).toISOString())
-      .lte("event_time", new Date(endOfDay).toISOString());
+      .eq("attendance_date", attendanceDate)
+      .maybeSingle();
 
-    const isFirstCheckIn = !existingLogs || existingLogs.length === 0;
+    const isFirstCheckIn = !existingNotification;
 
     // 3️⃣ Insert attendance log
     await supabase.from("attendance_logs").insert({
@@ -95,6 +93,19 @@ export async function POST(req: Request) {
             }),
           });
         }
+      }
+
+      // Save notification state so future scans today won't notify again
+      const { error: notificationError } = await supabase
+        .from("attendance_notification_state")
+        .insert({
+          employee_id,
+          org_id: employee.org_id,
+          attendance_date: attendanceDate,
+        });
+
+      if (notificationError) {
+        console.error("Notification state insert failed:", notificationError);
       }
     }
 
