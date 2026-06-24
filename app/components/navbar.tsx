@@ -168,7 +168,7 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-3">
             <a href="/login" className="px-6 py-3 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 
               transition-colors">
-              Login / Register
+              Login
             </a>
 
             <a href="#contact" className="px-6 py-2.5 bg-linear-to-r from-green-600 to-blue-600 text-white 
