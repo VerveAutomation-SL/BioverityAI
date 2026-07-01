@@ -19,7 +19,7 @@ export async function GET(req: Request) {
       );
     }
 
-    // 2️⃣ Fetch employees with biometric status
+    // 2️⃣ Fetch employees with biometric status (excluding soft-deleted)
     const { data, error } = await supabase
       .from("employees")
       .select(`
@@ -37,6 +37,7 @@ export async function GET(req: Request) {
         )
       `)
       .eq("org_id", org_id)
+      .eq("is_deleted", false)
       .order("created_at", { ascending: false });
 
     if (error) {

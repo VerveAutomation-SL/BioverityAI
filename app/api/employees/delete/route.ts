@@ -28,10 +28,13 @@ export async function DELETE(req: Request) {
       );
     }
 
-    // 3️⃣ Delete employee (org-safe)
+    // 3️⃣ Soft delete employee (org-safe)
     const { error: employeeError } = await supabase
       .from("employees")
-      .delete()
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+      })
       .eq("id", employee_id)
       .eq("org_id", org_id);
 
