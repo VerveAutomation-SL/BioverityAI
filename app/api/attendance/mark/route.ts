@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  getTimezoneFromCountry,
+  getLocalDate,
+} from "@/lib/time";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const WASENDER_KEY = "45c4351855553c63e57fdca99f068b61d309e8d4537a5da029666516b9cca618";
-
-// ── Timezone per org ──
-const ORG_TIMEZONES: Record<string, string> = {
-  omnicomm: "Asia/Singapore",
-  VerveSL: "Asia/Colombo",
-};
 
 export async function POST(req: Request) {
   try {
@@ -31,12 +29,19 @@ export async function POST(req: Request) {
     }
 
     // ── Pick the correct timezone for this org ──
-    const orgTimezone = ORG_TIMEZONES[employee.org_id] ?? "Asia/Singapore";
+    const { data: orgProfile } = await supabase
+      .from("profiles")
+      .select("country")
+      .eq("org_id", employee.org_id)
+      .limit(1)
+      .maybeSingle();
+
+    const orgTimezone = getTimezoneFromCountry(orgProfile?.country);
 
     const now = new Date();
     const isoTime = now.toISOString();
 
-    const formattedTime = now.toLocaleTimeString("en-SG", {
+    const formattedTime = now.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       timeZone: orgTimezone,

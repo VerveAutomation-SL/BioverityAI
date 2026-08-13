@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sgDayRange } from "@/lib/time";
+import {
+  dayRange,
+  getLocalDate,
+  getTimezoneFromCountry,
+} from "@/lib/time";
 
 export async function GET(req: Request) {
   try {
@@ -33,7 +37,7 @@ export async function GET(req: Request) {
 
     const { data: profile, error: profErr } = await supabase
       .from("profiles")
-      .select("org_id")
+      .select("org_id, country")
       .eq("id", user.id)
       .single();
 
@@ -43,22 +47,24 @@ export async function GET(req: Request) {
     }
 
     const org_id = profile.org_id;
+    const orgTimezone = getTimezoneFromCountry(profile.country);
+
     const date = searchParams.get("date");
     if (!date) {
       return NextResponse.json({ error: "date is required" }, { status: 400 });
     }
 
-    const { start, end } = sgDayRange(date);
+    const { start, end } = dayRange(date, orgTimezone);
 
-    const nowSG = new Date().toLocaleString("en-US", { timeZone: "Asia/Singapore" });
-    const todaySG = new Date(nowSG).toISOString().slice(0, 10);
-    const isToday = date === todaySG;
+    const today = getLocalDate(new Date(), orgTimezone);
+    const isToday = date === today;
 
     // Fetch employees
     const { data: employees, error: empErr } = await supabase
       .from("employees")
       .select("id, employee_id, full_name, role, photo_url")
-      .eq("org_id", org_id);
+      .eq("org_id", org_id)
+      .eq("is_deleted", false);
 
     if (empErr) {
       console.error("Employee fetch error:", empErr);

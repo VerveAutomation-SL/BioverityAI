@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  getTimezoneFromCountry,
+  getLocalDate,
+  formatLocalTimeFromISO,
+} from "@/lib/time";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, ClipboardCheck, Users, Calendar, TrendingUp, Clock, Loader2, Settings, Download, Fingerprint, Globe } from "lucide-react";
 
@@ -24,14 +29,6 @@ type Schedule = {
   evening_start: string;
   evening_end: string;
 };
-
-// Helper function to format time in Singapore timezone
-const formatSGTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString("en-SG", {
-    timeZone: "Asia/Singapore",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
 // ── Source badge component ──
 function SourceBadge({ source }: { source: "biometric" | "web" | "both" | null }) {
@@ -68,14 +65,11 @@ export default function AttendancePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [timeZone, setTimeZone] = useState("Asia/Singapore");
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
 
-  const [date, setDate] = useState(
-    new Date().toLocaleDateString("en-CA", {
-      timeZone: "Asia/Singapore",
-    })
-  );
+  const [date, setDate] = useState("");
 
   const [employees, setEmployees] = useState<AttendanceRow[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState(false);
@@ -90,10 +84,12 @@ export default function AttendancePage() {
   const [scheduleSaving, setScheduleSaving] = useState(false);
 
   useEffect(() => {
+    if (!timeZone) return;
+
     const updateTime = () => {
       setCurrentTime(
-        new Date().toLocaleTimeString("en-SG", {
-          timeZone: "Asia/Singapore",
+        new Date().toLocaleTimeString("en-US", {
+          timeZone,
           hour: "2-digit",
           minute: "2-digit",
         })
@@ -101,9 +97,11 @@ export default function AttendancePage() {
     };
 
     updateTime();
+
     const interval = setInterval(updateTime, 1000);
+
     return () => clearInterval(interval);
-  }, []);
+  }, [timeZone]);
 
   useEffect(() => {
     (async () => {
@@ -114,7 +112,7 @@ export default function AttendancePage() {
 
       const { data: prof } = await supabase
         .from("profiles")
-        .select("org_id, role, full_name")
+        .select("org_id, role, full_name, country")
         .eq("id", user.id)
         .single();
 
@@ -123,6 +121,12 @@ export default function AttendancePage() {
       }
 
       setProfile(prof);
+
+      const organizationTimezone = getTimezoneFromCountry(prof.country);
+
+      setTimeZone(organizationTimezone);
+      setDate(getLocalDate(new Date(), organizationTimezone));
+
       setLoading(false);
     })();
   }, []);
@@ -198,9 +202,7 @@ export default function AttendancePage() {
   }, [profile?.org_id, date]);
 
   useEffect(() => {
-    const today = new Date().toLocaleDateString("en-CA", {
-      timeZone: "Asia/Singapore",
-    });
+    const today = getLocalDate(new Date(), timeZone);
     if (date !== today) return;
 
     const interval = setInterval(() => {
@@ -208,7 +210,7 @@ export default function AttendancePage() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [date, profile?.org_id]);
+  }, [date, profile?.org_id, timeZone]);
 
   const saveSchedule = async () => {
     if (!profile?.org_id) return;
@@ -520,7 +522,7 @@ export default function AttendancePage() {
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3 text-emerald-600" />
                                 <p className="text-xs text-emerald-600 font-semibold">
-                                  {formatSGTime(emp.check_in)}
+                                  {formatLocalTimeFromISO(emp.check_in, timeZone)}
                                 </p>
                               </div>
                               {/* ── Source badge ── */}
