@@ -25,6 +25,8 @@ export async function GET(req: Request) {
       .select(`
         id,
         employee_id,
+        previous_employee_id,
+        status,
         full_name,
         department,
         role,

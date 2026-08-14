@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import EmployeeRegistrationForm from "@/app/components/EmployeeRegistrationForm";
 import UpdateEmployeeForm from "@/app/components/UpdateEmployeeForm";
+import EmployeeActionModal from "@/app/components/EmployeeActionModal";
 import { UserPlus, Users, CheckCircle2, Eye, Edit, Trash2, Loader2, XCircle } from "lucide-react";
 import ReactCountryFlag from "react-country-flag";
 // @ts-ignore
@@ -16,7 +17,9 @@ const nameToCode: Record<string, string> = Object.fromEntries(
 
 interface Employee {
   id: string;
-  employee_id: string;
+  employee_id: string | null;
+  previous_employee_id?: string | null;
+  status: "active" | "inactive";
   full_name: string;
   department: string;
   role: string;
@@ -35,10 +38,12 @@ export default function EmployeeRegistrationPage() {
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [showInactiveEmployees, setShowInactiveEmployees] = useState(false);
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -74,27 +79,6 @@ export default function EmployeeRegistrationPage() {
     }
   };
 
-  const handleDelete = async (employeeId: string) => {
-    if (!confirm("Are you sure you want to delete this employee? This action cannot be undone.")) return;
-
-    try {
-      setDeletingId(employeeId);
-      const response = await fetch(
-        `/api/employees/delete?employee_id=${employeeId}&org_id=${profile.org_id}`,
-        { method: "DELETE" }
-      );
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete employee");
-      }
-      setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
-    } catch (err: any) {
-      alert(err.message || "Failed to delete employee");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
   const handleView = (employee: Employee) => {
     setSelectedEmployee(employee);
     setShowViewModal(true);
@@ -114,6 +98,55 @@ export default function EmployeeRegistrationPage() {
     setShowEditModal(false);
   };
 
+  const handleReactivate = async (employee: Employee) => {
+    if (!profile?.org_id) {
+      alert("Organization ID not found.");
+      return;
+    }
+
+    const employeeId = employee.previous_employee_id;
+
+    if (!employeeId) {
+      alert("This employee does not have a previous Employee ID and cannot be reactivated.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to reactivate ${employee.full_name}?\n\nEmployee ID: ${employeeId}\n\nThe employee will become active again.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setReactivatingId(employee.id);
+
+      const response = await fetch("/api/employees/reactivate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          employee_id: employee.id,
+          org_id: profile.org_id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to reactivate employee");
+      }
+
+      await fetchEmployees(profile.org_id);
+    } catch (err: any) {
+      alert(err.message || "Failed to reactivate employee");
+    } finally {
+      setReactivatingId(null);
+    }
+  };
+
   if (loading || !profile) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
@@ -122,9 +155,11 @@ export default function EmployeeRegistrationPage() {
     );
   }
 
-  const activeCount = employees.filter(
-    e => e.biometric_enrollments && e.biometric_enrollments.length > 0
-  ).length;
+  const activeEmployees = employees.filter(e => e.status === "active");
+  const inactiveEmployees = employees.filter(e => e.status === "inactive");
+
+  const activeCount = activeEmployees.length;
+  const inactiveCount = inactiveEmployees.length;
 
   return (
     <div className="space-y-8">
@@ -148,139 +183,361 @@ export default function EmployeeRegistrationPage() {
       {/* Registration Form */}
       <EmployeeRegistrationForm orgId={profile.org_id} onSuccess={handleRegistrationSuccess} />
 
-      {/* Registered Employees Table */}
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
-        <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
-              <Users className="w-5 h-5 text-white" />
+      {/* Registered Employees */}
+      <div className="space-y-6">
+
+        {/* ================= ACTIVE EMPLOYEES ================= */}
+        <div className="bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
+
+          <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+            <div className="flex items-center justify-between">
+
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
+                  <Users className="w-5 h-5 text-white" />
+                </div>
+
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-800">
+                    Active Employees
+                  </h2>
+
+                  <p className="text-sm text-slate-500 mt-1">
+                    {activeCount} active employee{activeCount !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+
             </div>
-            <h2 className="text-2xl font-bold text-slate-800">Registered Employees</h2>
           </div>
-        </div>
 
-        {employeesLoading ? (
-          <div className="p-16 text-center">
-            <Loader2 className="w-12 h-12 animate-spin text-slate-400 mx-auto mb-4" />
-            <p className="text-lg font-semibold text-slate-600">Loading employees...</p>
-          </div>
-        ) : employees.length === 0 ? (
-          <div className="p-16 text-center">
-            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="w-10 h-10 text-slate-400" />
+          {employeesLoading ? (
+            <div className="p-16 text-center">
+              <Loader2 className="w-12 h-12 animate-spin text-slate-400 mx-auto mb-4" />
+              <p className="text-lg font-semibold text-slate-600">Loading employees...</p>
             </div>
-            <p className="text-lg font-semibold text-slate-600 mb-2">No employees registered yet</p>
-            <p className="text-sm text-slate-500">Use the form above to register your first employee</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50 text-left text-sm text-slate-600 border-b border-slate-200">
-                  <th className="p-4 font-semibold">Photo</th>
-                  <th className="p-4 font-semibold">Employee ID</th>
-                  <th className="p-4 font-semibold">Name</th>
-                  <th className="p-4 font-semibold">Department</th>
-                  <th className="p-4 font-semibold">Role</th>
-                  <th className="p-4 font-semibold">Country</th>
-                  <th className="p-4 font-semibold">Status</th>
-                  <th className="p-4 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map((emp) => {
-                  const isActive = emp.biometric_enrollments && emp.biometric_enrollments.length > 0;
-                  const countryCode = emp.country ? nameToCode[emp.country] : null;
+          ) : activeEmployees.length === 0 ? (
+            <div className="p-16 text-center">
+              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-10 h-10 text-slate-400" />
+              </div>
+              <p className="text-lg font-semibold text-slate-600 mb-2">No active employees</p>
+              <p className="text-sm text-slate-500">Register an employee using the form above.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50 text-left text-sm text-slate-600 border-b border-slate-200">
+                    <th className="p-4 font-semibold">Photo</th>
+                    <th className="p-4 font-semibold">Employee ID</th>
+                    <th className="p-4 font-semibold">Name</th>
+                    <th className="p-4 font-semibold">Department</th>
+                    <th className="p-4 font-semibold">Role</th>
+                    <th className="p-4 font-semibold">Country</th>
+                    <th className="p-4 font-semibold">Status</th>
+                    <th className="p-4 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeEmployees.map((emp) => {
+                    const countryCode = emp.country ? nameToCode[emp.country] : null;
 
-                  return (
-                    <tr key={emp.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                      <td className="p-4">
-                        <img
-                          src={emp.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.full_name)}&background=random`}
-                          alt={emp.full_name}
-                          className="w-12 h-12 rounded-full object-cover border-2 border-slate-200"
-                        />
-                      </td>
-                      <td className="p-4">
-                        <span className="font-semibold text-slate-800">{emp.employee_id}</span>
-                      </td>
-                      <td className="p-4">
-                        <span className="font-medium text-slate-800">{emp.full_name}</span>
-                      </td>
-                      <td className="p-4 text-slate-600">{emp.department}</td>
-                      <td className="p-4 text-slate-600">{emp.role}</td>
+                    return (
+                      <tr key={emp.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                        <td className="p-4">
+                          <img
+                            src={emp.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.full_name)}&background=random`}
+                            alt={emp.full_name}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-slate-200"
+                          />
+                        </td>
+                        <td className="p-4">
+                          <span className="font-semibold text-slate-800">{emp.employee_id || "—"}</span>
+                        </td>
+                        <td className="p-4">
+                          <span className="font-medium text-slate-800">{emp.full_name}</span>
+                        </td>
+                        <td className="p-4 text-slate-600">{emp.department}</td>
+                        <td className="p-4 text-slate-600">{emp.role}</td>
 
-                      {/* ✅ Country column */}
-                      <td className="p-4">
-                        {emp.country && countryCode ? (
-                          <div className="flex items-center gap-2">
-                            <ReactCountryFlag
-                              countryCode={countryCode}
-                              svg
-                              style={{ width: "1.2em", height: "1.2em" }}
-                            />
-                            <span className="text-sm text-slate-700">{emp.country}</span>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-slate-400">—</span>
-                        )}
-                      </td>
+                        <td className="p-4">
+                          {emp.country && countryCode ? (
+                            <div className="flex items-center gap-2">
+                              <ReactCountryFlag
+                                countryCode={countryCode}
+                                svg
+                                style={{ width: "1.2em", height: "1.2em" }}
+                              />
+                              <span className="text-sm text-slate-700">{emp.country}</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-400">—</span>
+                          )}
+                        </td>
 
-                      <td className="p-4">
-                        {isActive ? (
+                        <td className="p-4">
                           <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-semibold">
                             <CheckCircle2 className="w-4 h-4" /> Active
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-sm font-semibold">
-                            <XCircle className="w-4 h-4" /> Inactive
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleView(emp)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(emp)}
-                            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Edit Employee"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(emp.id)}
-                            disabled={deletingId === emp.id}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Delete Employee"
-                          >
-                            {deletingId === emp.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                        </td>
 
-        {!employeesLoading && employees.length > 0 && (
-          <div className="p-4 border-t border-slate-200 bg-slate-50 text-sm text-slate-600 text-center">
-            Showing {employees.length} employee{employees.length !== 1 ? "s" : ""} •
-            <span className="text-emerald-600 font-semibold ml-1">{activeCount} Active</span>
-          </div>
-        )}
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleView(emp)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEdit(emp)}
+                              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              title="Edit Employee"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedEmployee(emp);
+                                setShowActionModal(true);
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Employee Actions"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {!employeesLoading && activeEmployees.length > 0 && (
+            <div className="p-4 border-t border-slate-200 bg-slate-50 text-sm text-slate-600 text-center">
+              Showing {activeEmployees.length} active employee{activeEmployees.length !== 1 ? "s" : ""}
+            </div>
+          )}
+
+        </div>
+
+
+        {/* ================= INACTIVE EMPLOYEES ================= */}
+        <div className="bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden">
+
+          {/* Dropdown Header */}
+          <button
+            type="button"
+            onClick={() => setShowInactiveEmployees(prev => !prev)}
+            className="w-full p-6 bg-gradient-to-r from-slate-100 to-slate-50 hover:from-slate-150 hover:to-slate-100 transition-colors"
+          >
+
+            <div className="flex items-center justify-between">
+
+              <div className="flex items-center gap-3">
+
+                <div className="w-10 h-10 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-white" />
+                </div>
+
+                <div className="text-left">
+
+                  <h2 className="text-2xl font-bold text-slate-800">
+                    Inactive Employees
+                  </h2>
+
+                  <p className="text-sm text-slate-500 mt-1">
+                    {inactiveCount} inactive employee{inactiveCount !== 1 ? "s" : ""}
+                  </p>
+
+                </div>
+
+              </div>
+
+              <span
+                className={`text-2xl text-slate-500 transition-transform duration-200 ${
+                  showInactiveEmployees ? "rotate-180" : ""
+                }`}
+              >
+                ▼
+              </span>
+
+            </div>
+
+          </button>
+
+
+          {/* Dropdown Content */}
+          {showInactiveEmployees && (
+            <div>
+
+              {inactiveEmployees.length === 0 ? (
+
+                <div className="p-12 text-center">
+
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <XCircle className="w-8 h-8 text-slate-400" />
+                  </div>
+
+                  <p className="text-lg font-semibold text-slate-600">
+                    No inactive employees
+                  </p>
+
+                  <p className="text-sm text-slate-500 mt-1">
+                    Employees you deactivate will appear here.
+                  </p>
+
+                </div>
+
+              ) : (
+
+                <div className="overflow-x-auto">
+
+                  <table className="w-full">
+
+                    <thead>
+                      <tr className="bg-slate-50 text-left text-sm text-slate-600 border-t border-b border-slate-200">
+                        <th className="p-4 font-semibold">Photo</th>
+                        <th className="p-4 font-semibold">Previous Employee ID</th>
+                        <th className="p-4 font-semibold">Name</th>
+                        <th className="p-4 font-semibold">Department</th>
+                        <th className="p-4 font-semibold">Role</th>
+                        <th className="p-4 font-semibold">Country</th>
+                        <th className="p-4 font-semibold">Status</th>
+                        <th className="p-4 font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+
+                      {inactiveEmployees.map((emp) => {
+
+                        const countryCode = emp.country ? nameToCode[emp.country] : null;
+
+                        return (
+                          <tr key={emp.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+
+                            <td className="p-4">
+                              <img
+                                src={emp.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.full_name)}&background=random`}
+                                alt={emp.full_name}
+                                className="w-12 h-12 rounded-full object-cover border-2 border-slate-200"
+                              />
+                            </td>
+
+                            <td className="p-4">
+                              <span className="font-semibold text-slate-600">
+                                {emp.previous_employee_id || "—"}
+                              </span>
+                            </td>
+
+                            <td className="p-4">
+                              <span className="font-medium text-slate-800">{emp.full_name}</span>
+                            </td>
+
+                            <td className="p-4 text-slate-600">{emp.department}</td>
+
+                            <td className="p-4 text-slate-600">{emp.role}</td>
+
+                            <td className="p-4">
+                              {emp.country && countryCode ? (
+                                <div className="flex items-center gap-2">
+                                  <ReactCountryFlag
+                                    countryCode={countryCode}
+                                    svg
+                                    style={{ width: "1.2em", height: "1.2em" }}
+                                  />
+                                  <span className="text-sm text-slate-700">{emp.country}</span>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-slate-400">—</span>
+                              )}
+                            </td>
+
+                            <td className="p-4">
+                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-sm font-semibold">
+                                <XCircle className="w-4 h-4" />
+                                Inactive
+                              </span>
+                            </td>
+
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                {/* VIEW */}
+                                <button
+                                  onClick={() => handleView(emp)}
+                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                  title="View Details"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+
+                                {/* EDIT */}
+                                <button
+                                  onClick={() => handleEdit(emp)}
+                                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                  title="Edit Employee"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+
+                                {/* REACTIVATE */}
+                                <button
+                                  onClick={() => handleReactivate(emp)}
+                                  disabled={reactivatingId === emp.id}
+                                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Reactivate Employee"
+                                >
+                                  {reactivatingId === emp.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  )}
+                                </button>
+
+                                {/* ACTIONS (opens EmployeeActionModal) */}
+                                <button
+                                  onClick={() => {
+                                    setSelectedEmployee(emp);
+                                    setShowActionModal(true);
+                                  }}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Employee Actions"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+
+                          </tr>
+                        );
+                      })}
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              )}
+
+            </div>
+          )}
+
+          {/* Collapsed footer */}
+          {!showInactiveEmployees && (
+            <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 text-center text-sm text-slate-500">
+              Click to view inactive employees
+            </div>
+          )}
+
+        </div>
+
       </div>
 
       {/* View Employee Modal */}
@@ -313,7 +570,7 @@ export default function EmployeeRegistrationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-semibold text-slate-600">Employee ID</label>
-                  <p className="text-lg text-slate-800 mt-1">{selectedEmployee.employee_id}</p>
+                  <p className="text-lg text-slate-800 mt-1">{selectedEmployee.employee_id || "—"}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-600">Full Name</label>
@@ -401,6 +658,21 @@ export default function EmployeeRegistrationPage() {
             />
           </div>
         </div>
+      )}
+
+      {/* Employee Action Modal */}
+      {showActionModal && selectedEmployee && (
+        <EmployeeActionModal
+          employee={selectedEmployee}
+          orgId={profile.org_id}
+          onClose={() => {
+            setShowActionModal(false);
+            setSelectedEmployee(null);
+          }}
+          onSuccess={() => {
+            fetchEmployees(profile.org_id);
+          }}
+        />
       )}
     </div>
   );

@@ -39,6 +39,8 @@ export async function POST(req: Request) {
         role,
         photo_url,
         country,
+        status: "active",
+        is_deleted: false,
       })
       .select()
       .single();
