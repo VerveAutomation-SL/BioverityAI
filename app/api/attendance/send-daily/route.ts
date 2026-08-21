@@ -143,7 +143,7 @@ export async function GET(req: Request) {
             .eq("org_id", org_id).gte("event_time", start).lte("event_time", end);
 
         type EmpRecord = {
-            id: string; full_name: string; employee_id: string; department: string;
+            id: string; full_name: string; employee_id: string | null; department: string;
             checkIn: string | null; checkInLoc: string | null;
             checkOut: string | null; checkOutLoc: string | null;
             workingHours: string | null; status: "Present" | "Absent";
@@ -162,7 +162,13 @@ export async function GET(req: Request) {
         };
 
         const records: EmpRecord[] = (employees ?? [])
-            .sort((a, b) => a.employee_id.localeCompare(b.employee_id, undefined, { numeric: true, sensitivity: "base" }))
+            .sort((a, b) =>
+                (a.employee_id ?? "").localeCompare(
+                    b.employee_id ?? "",
+                    undefined,
+                    { numeric: true, sensitivity: "base" }
+                )
+            )
             .map(emp => {
                 type Event = { ts: Date; timeStr: string; location: string; source: "web" | "bio" };
                 const events: Event[] = [];
@@ -417,7 +423,7 @@ export async function GET(req: Request) {
             rect(currentPage, tableX, rowY - rowH, totalColW, rowH, idx % 2 === 0 ? C.rowAlt : C.white);
             const cinStr  = rec.checkIn  ? `${rec.checkIn}  / ${rec.checkInLoc  ?? "–"}` : "–";
             const coutStr = rec.checkOut ? `${rec.checkOut} / ${rec.checkOutLoc ?? "–"}` : "–";
-            const cells   = [String(idx + 1), rec.employee_id, rec.full_name, rec.department ?? "–", rec.status, cinStr, coutStr, rec.workingHours ?? "–"];
+            const cells   = [String(idx + 1), rec.employee_id ?? "", rec.full_name ?? "", rec.department ?? "–", rec.status, cinStr, coutStr, rec.workingHours ?? "–"];
             let cx4 = tableX;
             cells.forEach((cell, ci) => {
                 const col   = cols[ci];
