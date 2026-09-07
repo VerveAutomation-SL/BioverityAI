@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabaseClient";
 import {
   getTimezoneFromCountry,
   getLocalDate,
+  dayRange,
 } from "@/lib/time";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -47,21 +48,24 @@ export async function POST(req: Request) {
       timeZone: orgTimezone,
     });
 
-    // 2️⃣ Check notification state instead of attendance logs
+    // 2️⃣ Decide "first check-in of the day" from the attendance logs
+    //    themselves — this must run BEFORE inserting the new log.
+    const attendanceDate = getLocalDate(now, orgTimezone);
 
-    const attendanceDate = now.toLocaleDateString("en-CA", {
-      timeZone: orgTimezone,
-    });
+    const { start: dayStart, end: dayEnd } = dayRange(
+      attendanceDate,
+      orgTimezone
+    );
 
-    const { data: existingNotification } = await supabase
-      .from("attendance_notification_state")
-      .select("id")
+    const { count: priorLogCount } = await supabase
+      .from("attendance_logs")
+      .select("event_time", { count: "exact", head: true })
       .eq("employee_id", employee_id)
       .eq("org_id", employee.org_id)
-      .eq("attendance_date", attendanceDate)
-      .maybeSingle();
+      .gte("event_time", dayStart)
+      .lte("event_time", dayEnd);
 
-    const isFirstCheckIn = !existingNotification;
+    const isFirstCheckIn = (priorLogCount ?? 0) === 0;
 
     // 3️⃣ Insert attendance log
     await supabase.from("attendance_logs").insert({
@@ -98,19 +102,6 @@ export async function POST(req: Request) {
             }),
           });
         }
-      }
-
-      // Save notification state so future scans today won't notify again
-      const { error: notificationError } = await supabase
-        .from("attendance_notification_state")
-        .insert({
-          employee_id,
-          org_id: employee.org_id,
-          attendance_date: attendanceDate,
-        });
-
-      if (notificationError) {
-        console.error("Notification state insert failed:", notificationError);
       }
     }
 
